@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         TOV_Family sols(eos1, eos2);
         // double time1 = (double) clock() / CLOCKS_PER_SEC;
         std::chrono::time_point time1 = std::chrono::high_resolution_clock::now();
-        double lambda = sols.calc_lambda(K, 0.9, 0.9);
+        double lambda = sols.calc_lambda(K, 0.99, 0.9);
         //std::cout << "e1 is " << e01 << std::endl;
         //test_calc_e2(K, 0.1, e01);
         //double time2 = (double) clock() / CLOCKS_PER_SEC;

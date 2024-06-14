@@ -164,11 +164,17 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
     R = R_B;
     if (M_B != 0 && M_D != 0) {F_chi = M_D / M;}
     else {
-        std::cout << "Surface of Baryon or DM fluid not reached" << std::endl;
-        std::cout << "[INFO] e1: " << e01*CONVERSION::geom_to_dens_GeV_fm3;
-        std::cout << " e2: " << e02*CONVERSION::geom_to_dens_GeV_fm3;
-        std::cout << " K: " << eos2.K;
-        std::cout << " Gamma: " << eos2.Gamma << std::endl;  
+        if (M_D == 0 && e02 != 0) {
+            std::cout << "Surface of Baryon or DM fluid not reached" << std::endl;
+            std::cout << "[INFO] e1: " << e01*CONVERSION::geom_to_dens_GeV_fm3;
+            std::cout << " e2: " << e02*CONVERSION::geom_to_dens_GeV_fm3;
+            std::cout << " K: " << eos2.K;
+            std::cout << " Gamma: " << eos2.Gamma << std::endl;  
+        }
+        else {//e1=1.73799 e2=0.4137
+            F_chi = 0.0;
+            R_D = 0.0;
+        }
     }
     calc_k2();
     calc_lambda();

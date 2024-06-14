@@ -7,6 +7,7 @@
 #include <vector> 
 #include <filesystem>
 #include "../libInterpolate/Interpolate.hpp"
+#include "../boost/function.hpp"
 
 class EOS_Tabular : public EOS {
     public:
@@ -22,6 +23,7 @@ class EOS_Tabular : public EOS {
         double p_surface;
         double e_min;
         double e_max;
+        double p_max;
         double energy_from_pressure(const double&);
         double pc_from_ec(const double&);
         double dedp(const double&);
@@ -38,8 +40,11 @@ class EOS_Tabular : public EOS {
         // boost::math::interpolators::pchip<std::vector<double>>* p_e;
         //boost::function<double (double)> e_p;
         //boost::function<double (double)> p_e;     
-        _1D::CubicSplineInterpolator<double> e_p;
-        _1D::CubicSplineInterpolator<double> p_e;
+        std::function<double (double)> e_p;
+        std::function<double (double)> p_e;
+        
+        //_1D::CubicSplineInterpolator<double> e_p;
+        //_1D::CubicSplineInterpolator<double> p_e;
 };
 
 

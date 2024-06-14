@@ -202,15 +202,15 @@ double TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, cons
         delta = pow(10, dim_e2-1);
         if (err_e2 > 0) {
             //std::cout << "decreasing lower bound "; 
-            lower_bound = center_point - 10*delta;
+            lower_bound = center_point - 5*delta;
             upper_bound = center_point + delta;
         }
         else {
             //std::cout << "increasing upper bound ";
             lower_bound = center_point - delta;
-            upper_bound = center_point + 10*delta;
+            upper_bound = center_point + 5*delta;
         }
-        
+        /*
         std::cout << "Bounds: [" << lower_bound << ", " << upper_bound << "]";
         std::cout << " e1=" << e1;
         std::cout << " e2=" << center_point;
@@ -219,7 +219,7 @@ double TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, cons
         std::cout << " dim_e2=" << dim_e2;
         std::cout << " err=" << err_e2 << "\r";
         std::cout.flush();
-        
+        */
         brent_root = brent_find_minima(F_chi_minima, lower_bound, upper_bound, double_bits);
     }
     return brent_root.first;
@@ -252,21 +252,26 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
     }
     const int part = int(N_SAMPLE / n_threads);
     eos2.K = K;
-    e2s = std::vector<double>(N_SAMPLE);
-    std::vector<std::thread> threads;
-    int start = 0;
-    for (int j = 0; j < n_threads; j++) {
-        int index_start = start;
-        int index_end = start+part;
-        threads.push_back(std::thread(&TOV_Family::add_to_vector, this, K, F_chi, index_start, index_end));
-        start = index_end;
-        /*
-        if (j >= 100) {
-            threads[j-100].join();
-        }
-        */
-    };
-    for (auto& t : threads) {t.join();};
+    if (F_chi != 0) {
+        e2s = std::vector<double>(N_SAMPLE);
+        std::vector<std::thread> threads;
+        int start = 0;
+        for (int j = 0; j < n_threads; j++) {
+            int index_start = start;
+            int index_end = start+part;
+            threads.push_back(std::thread(&TOV_Family::add_to_vector, this, K, F_chi, index_start, index_end));
+            start = index_end;
+            /*
+            if (j >= 100) {
+                threads[j-100].join();
+            }
+            */
+        };
+        for (auto& t : threads) {t.join();};
+    }
+    else {
+        e2s = std::vector<double>(N_SAMPLE, 0);
+    }
     //for (int i = 100; i < n_threads; i++) { threads[i].join();}
     //threads.clear();
     initialize_splines(e1s, e2s);
@@ -277,6 +282,9 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
         lambda = 5000;
     }
     else { 
+        if (lambda < 0) {
+            lambda = 0;
+        }
         //std::cout << "Lambda: " << lambda << std::endl;
     }
     //std::cout << "Info: F_chi=" << F_chi << " K=" << K << " Mass=" << mass << std::endl;

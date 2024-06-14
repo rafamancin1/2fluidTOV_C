@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include "../include/spline.h"
-#include <boost/math/interpolators/pchip.hpp>
+#include "../boost/math/interpolators/pchip.hpp"
 
 
 using boost::math::interpolators::pchip; //Piecewise Cubic Hermite interpolation
@@ -26,6 +26,8 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     f_eos.seekg(0);
     std::vector<double> log_e_tab;
     std::vector<double> log_p_tab;
+    std::vector<double> log_e_tab_copy;
+    std::vector<double> log_p_tab_copy;
     //std::cout << "Reading file" << std::endl;
     while(true) {
         f_eos >> p;
@@ -33,12 +35,15 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
         if (f_eos.eof()) { break; }
         log_e_tab.push_back(log10(e));
         log_p_tab.push_back(log10(p));
+        log_e_tab_copy.push_back(log10(e));
+        log_p_tab_copy.push_back(log10(p));
     }
-    remove_leading_zero(log_e_tab);
-    remove_leading_zero(log_p_tab);
+    //remove_leading_zero(log_e_tab);
+    //remove_leading_zero(log_p_tab);
     p_surface = pow(10, log_p_tab[0]);
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
+    p_max = pow(10, log_p_tab.back());
     f_eos.close();
     //std::vector<double> log_e_tab_copy = log_e_tab;
     //std::vector<double> log_p_tab_copy = log_p_tab;
@@ -46,8 +51,10 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     //p_e = pchip(std::move(log_e_tab), std::move(log_p_tab));
     //tk::spline e_of_p(log_p_tab, log_e_tab);
     //tk::spline p_of_e(log_e_tab, log_p_tab);
-    e_p.setData(log_p_tab, log_e_tab);
-    p_e.setData(log_e_tab, log_p_tab);
+    e_p = tk::spline(log_p_tab, log_e_tab); //e_of_p;
+    p_e = tk::spline(log_e_tab, log_p_tab); //p_of_e;
+    //e_p.setData(log_p_tab, log_e_tab);
+    //p_e.setData(log_e_tab, log_p_tab);
 };
 
 void EOS_Tabular::remove_leading_zero(std::vector<double>& x_tab) {
@@ -64,12 +71,14 @@ double EOS_Tabular::energy_from_pressure(const double& pressure) {
 
 double EOS_Tabular::pc_from_ec(const double& central_energy) {
     // auto spline = pchip<decltype(log_e_tab)>(log_e_tab, log_p_tab);
-    double p_tab = pow(10.0, p_e(log10(central_energy)));
+    const double log_energy = log10(central_energy);
+    const double exponent = p_e(log_energy);
+    double p_tab = pow(10.0, exponent);
     return p_tab;
 };
 
 double EOS_Tabular::dedp(const double& pressure) {
-    /*
+    
     if (pressure == 0) {
         return 0;
     }
@@ -84,6 +93,6 @@ double EOS_Tabular::dedp(const double& pressure) {
         double dedp_value = (eps_upper - eps_lower) / (2 * dp);
         return dedp_value;
     }
-    */
-   return e_p.derivative(log10(pressure));
+    
+   //return e_p.derivative(log10(pressure));
 };
