@@ -3,6 +3,9 @@
 #include <cmath>
 #include "../include/spline.h"
 #include "../boost/math/interpolators/pchip.hpp"
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h>
+#include <gsl/gsl_vector.h>
 
 
 using boost::math::interpolators::pchip; //Piecewise Cubic Hermite interpolation
@@ -26,8 +29,8 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     f_eos.seekg(0);
     std::vector<double> log_e_tab;
     std::vector<double> log_p_tab;
-    std::vector<double> log_e_tab_copy;
-    std::vector<double> log_p_tab_copy;
+    //std::vector<double> log_e_tab_copy;
+    //std::vector<double> log_p_tab_copy;
     //std::cout << "Reading file" << std::endl;
     while(true) {
         f_eos >> p;
@@ -35,26 +38,41 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
         if (f_eos.eof()) { break; }
         log_e_tab.push_back(log10(e));
         log_p_tab.push_back(log10(p));
-        log_e_tab_copy.push_back(log10(e));
-        log_p_tab_copy.push_back(log10(p));
+        //log_e_tab_copy.push_back(log10(e));
+        //log_p_tab_copy.push_back(log10(p));
     }
     //remove_leading_zero(log_e_tab);
     //remove_leading_zero(log_p_tab);
+    int tab_size = log_e_tab.size();
     p_surface = pow(10, log_p_tab[0]);
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
     p_max = pow(10, log_p_tab.back());
     f_eos.close();
+    //double log_e_tab_c[tab_size];
+    //double log_p_tab_c[tab_size];
+    /*
+    for (int i = 0; i < tab_size; i++) {
+        log_e_tab_c[i] = log_e_tab[i];
+        log_p_tab_c[i] = log_p_tab[i];
+    }
+    */
     //std::vector<double> log_e_tab_copy = log_e_tab;
     //std::vector<double> log_p_tab_copy = log_p_tab;
     //e_p = pchip(std::move(log_p_tab_copy), std::move(log_e_tab_copy));
     //p_e = pchip(std::move(log_e_tab), std::move(log_p_tab));
     //tk::spline e_of_p(log_p_tab, log_e_tab);
     //tk::spline p_of_e(log_e_tab, log_p_tab);
+    //gsl_interp_accel *acc_e = gsl_interp_accel_alloc();
+    //gsl_interp_accel *acc_p = gsl_interp_accel_alloc();
+    //gsl_spline *e_of_p = gsl_spline_alloc(gsl_interp_cspline, tab_size);
+    //gsl_spline_init(e_of_p, log_e_tab_c, log_p_tab_c, tab_size);
     e_p = tk::spline(log_p_tab, log_e_tab); //e_of_p;
     p_e = tk::spline(log_e_tab, log_p_tab); //p_of_e;
     //e_p.setData(log_p_tab, log_e_tab);
     //p_e.setData(log_e_tab, log_p_tab);
+    //free(log_e_tab_c);
+    //free(log_p_tab_c);
 };
 
 void EOS_Tabular::remove_leading_zero(std::vector<double>& x_tab) {

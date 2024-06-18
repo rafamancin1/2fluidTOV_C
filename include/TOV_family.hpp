@@ -7,12 +7,14 @@
 
 template<typename T>
 std::vector<double> linspace(T, T, int);
-const double K_MIN = 1e6;
+const double K_MIN = 1e7;
 const double K_MAX = 1e8;
-const double F_CHI_MIN = 0.01;
-const double F_CHI_MAX = 0.5;
-const double M_MIN = 0.2;
-const double M_MAX = 2.4;
+const double F_CHI_MIN = 0.0;
+const double F_CHI_MAX = 1.0;
+const double M_MIN = 0.8;
+const double M_MAX = 1.4;
+const double LAMBDA_MIN = 0.0;
+const double LAMBDA_MAX = 5000;
 const int N_SAMPLE = 200;
 
 class TOV_Family {
@@ -41,10 +43,12 @@ class TOV_Family {
         _1D::CubicSplineInterpolator<double> k2_m;
         std::vector<double> e1s;
         std::vector<double> e2s;
+        std::vector<int> bad_indexes;
         void sort_mass();
         void remove_equal_entries();
         void initialize_splines(const std::vector<double>&, const std::vector<double>&);
-        double calc_e2_from_F_chi(const double&, const double&, const double&);
+        std::pair<double, double> calc_e2_from_F_chi(const double&, const double&, const double&);
+        double calc_e2_from_F_chi_v2(const double&, const double&, const double&);
         double calc_F_chi(const double&, const double&, const double&);
         void reset_state();
         void add_to_vector(double, double, int, int);

@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -g -Ofast -pthread -I ./
+CFLAGS=-c -g -Wall -Ofast -pthread -I ./ 
 SRC_DIR=src
 OBJ_DIR=build
 HEAD_DIR=include
@@ -14,7 +14,7 @@ OBJECTS=$(SOURCES:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
 all: $(EXEC)
 
 $(EXEC): $(OBJECTS) 
-	$(CC) $^ -o $@ -lm
+	$(CC) $^ -o $@ -lm `gsl-config --cflags --libs`
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CC) $(CFLAGS) $< -o $@ -lm

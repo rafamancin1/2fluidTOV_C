@@ -6,13 +6,30 @@
 #include "../include/spline.h"
 #include <bits/stdc++.h>
 #include <algorithm>
-
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_min.h>
+#include <gsl/gsl_roots.h>
+#include <boost/math/tools/roots.hpp> 
 
 using boost::math::interpolators::pchip;
 using boost::math::tools::brent_find_minima;
 using boost::bind;
 
 const int GRID_SIZE = 5;
+
+template< typename F >  class gsl_function_pp : public gsl_function {
+ public:
+ gsl_function_pp(const F& func) : _func(func) {
+   function = &gsl_function_pp::invoke;
+   params=this;
+ }
+ private:
+ const F& _func;
+ static double invoke(double x, void *params) {
+ return static_cast<gsl_function_pp*>(params)->_func(x);
+ }
+ };
 
 
 template<typename T>
@@ -158,11 +175,11 @@ double TOV_Family::calc_F_chi(const double& K, const double& e1, const double& e
     return res.F_chi;
 }
 
-double TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, const double& e1) {
+std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, const double& e1) {
     const int double_bits = std::numeric_limits<double>::digits;
-    const double err_max = 1e-1;
-    double lower_bound = 0.01;
-    double upper_bound = 130;
+    const double err_max = 1;
+    double lower_bound = 0.0;
+    double upper_bound = 130.0;
     /*
     if (F_chi != 1) {
         double factor = pow(5.0, log10(K/1e7)) * (1e9/K) * (F_chi / (1.0-F_chi));
@@ -181,53 +198,51 @@ double TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, cons
     auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*fabs(calc_F_chi(K, e1, e2)-F_chi);};
     std::pair<double, double> brent_root = brent_find_minima(F_chi_minima, lower_bound, upper_bound, double_bits);
     
-    while (brent_root.second > err_max) {
-        double try_e2 = brent_root.first;
-        double err_e2 = 100*calc_F_chi(K, e1, try_e2)-F_chi;
-        double center_point = try_e2;
-        double dim_e2 = 0;
-        double delta;
-        if (try_e2 >= 1) {
-            while (try_e2 > 10) {
-                try_e2 /= 10;
-                dim_e2 += 1;
-            }
-        }
-        else {
-            while(try_e2 < 1) {
-                try_e2 *= 10;
-                dim_e2 -= 1;
-            }
-        }
-        delta = pow(10, dim_e2-1);
-        if (err_e2 > 0) {
-            //std::cout << "decreasing lower bound "; 
-            lower_bound = center_point - 5*delta;
-            upper_bound = center_point + delta;
-        }
-        else {
-            //std::cout << "increasing upper bound ";
-            lower_bound = center_point - delta;
-            upper_bound = center_point + 5*delta;
-        }
-        /*
-        std::cout << "Bounds: [" << lower_bound << ", " << upper_bound << "]";
-        std::cout << " e1=" << e1;
-        std::cout << " e2=" << center_point;
-        std::cout << " F_chi=" << F_chi;
-        std::cout << " delta=" << delta;
-        std::cout << " dim_e2=" << dim_e2;
-        std::cout << " err=" << err_e2 << "\r";
-        std::cout.flush();
-        */
-        brent_root = brent_find_minima(F_chi_minima, lower_bound, upper_bound, double_bits);
-    }
-    return brent_root.first;
+    //if (brent_root.second > err_max) {std::cout << brent_root.second << std::endl;}; 
+    return brent_root;
+}
+
+double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, const double& e1) {
+    const double err_max = 1;
+    double lower_bound = 0.0;
+    double upper_bound = 130.0;
+    int status;
+    //double guess = lower_bound + (3 - sqrt(5)/2)*(upper_bound-lower_bound);
+    double root;
+    auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*calc_F_chi(K, e1, e2)-F_chi;};
+    gsl_function_pp<decltype(F_chi_minima)> Fp(F_chi_minima);
+    const gsl_root_fsolver_type *T;
+
+    gsl_root_fsolver *s;
+    gsl_function *F = static_cast<gsl_function*>(&Fp);
+    T = gsl_root_fsolver_brent;
+    s = gsl_root_fsolver_alloc(T); 
+    gsl_root_fsolver_set(s, F, lower_bound, upper_bound);
+    do {
+        status = gsl_root_fsolver_iterate(s);
+        root = gsl_root_fsolver_root(s);
+        upper_bound = gsl_root_fsolver_x_upper(s);
+        lower_bound = gsl_root_fsolver_x_lower(s);
+        
+        status = gsl_min_test_interval(lower_bound, upper_bound, 0.0, 0.1);
+        
+    } while (status == GSL_CONTINUE);
+    //std::cout << "err " << F_chi_minima(root) << std::endl;
+    //std::cout << "err(est)" << upper_bound - lower_bound << std::endl;
+    std::cout << upper_bound << std::endl;
+    gsl_root_fsolver_free(s);
+    return root;
 }
 
 void TOV_Family::add_to_vector(double K, double F_chi, int index_start, int index_end) {
     for (int index=index_start; index < index_end; index++) {
-        e2s[index] = calc_e2_from_F_chi(K, F_chi, e1s[index]);
+        double root = calc_e2_from_F_chi_v2(K, F_chi, e1s[index]);
+        e2s[index] = root;
+        /*
+        if (root.second > 1) {
+            bad_indexes.push_back(index);
+        }
+        */
     }
 }
 
@@ -236,7 +251,7 @@ double TOV_Family::calc_lambda(const double K, const double F_chi, const double 
     eos2.K = K;
     e2s = std::vector<double>(N_SAMPLE);
     for (int i = 0; i < N_SAMPLE; i++) {
-        double e2 = calc_e2_from_F_chi(K, F_chi, e1s[i]);
+        double e2 = calc_e2_from_F_chi_v2(K, F_chi, e1s[i]);
         e2s[i] = e2;
     }
     initialize_splines(e1s, e2s);
@@ -274,6 +289,7 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
     }
     //for (int i = 100; i < n_threads; i++) { threads[i].join();}
     //threads.clear();
+    //for (int x : bad_indexes) {e1s.erase(e1s.begin()+x); e2s.erase(e2s.begin()+x); n_samples -= 1;}
     initialize_splines(e1s, e2s);
     double lambda = lambda_from_mass(mass);
     if (lambda > 5000) {
@@ -282,7 +298,7 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
         lambda = 5000;
     }
     else { 
-        if (lambda < 0) {
+        if (lambda < 0 || lambda != lambda) {
             lambda = 0;
         }
         //std::cout << "Lambda: " << lambda << std::endl;
@@ -292,9 +308,11 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
 }
 
 double TOV_Family::calc_lambda_normalized(double K_norm, double F_chi_norm, double mass_norm) {
+    const int N_THREADS = 40;
     double K = pow(10, normalize_inverse(K_norm, log10(K_MIN), log10(K_MAX)));
     double F_chi = normalize_inverse(F_chi_norm, F_CHI_MIN, F_CHI_MAX);
     double mass = normalize_inverse(mass_norm, M_MIN, M_MAX);
+    double lambda = calc_lambda_parallel(K, F_chi, mass, N_THREADS);
     return calc_lambda(K, F_chi, mass);
 }
 

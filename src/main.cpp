@@ -14,6 +14,7 @@ double e01 = 0.3;
 double e02 = 0.8;
 double K = 1e7;
 double Gamma = 2;
+double F_chi = 0.2;
 int print;
 
 int main(int argc, char* argv[]) {
@@ -47,8 +48,8 @@ int main(int argc, char* argv[]) {
                 case 'T':
                     test = true;
                     break;
-                case 'p':
-                    sscanf(argv[i+1], "%i", &print);
+                case 'c':
+                    sscanf(argv[i+1], "%lf", &F_chi);
                     break;
                 default:
                     exit(1);
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]) {
         TOV_Family sols(eos1, eos2);
         // double time1 = (double) clock() / CLOCKS_PER_SEC;
         std::chrono::time_point time1 = std::chrono::high_resolution_clock::now();
-        double lambda = sols.calc_lambda(K, 0.99, 0.9);
+        double lambda = sols.calc_lambda_parallel(K, F_chi, 1.2, 5);
         //std::cout << "e1 is " << e01 << std::endl;
         //test_calc_e2(K, 0.1, e01);
         //double time2 = (double) clock() / CLOCKS_PER_SEC;
