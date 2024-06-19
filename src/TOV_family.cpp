@@ -16,7 +16,7 @@ using boost::math::interpolators::pchip;
 using boost::math::tools::brent_find_minima;
 using boost::bind;
 
-const int GRID_SIZE = 5;
+const int GRID_SIZE = 30;
 
 template< typename F >  class gsl_function_pp : public gsl_function {
  public:
@@ -205,7 +205,7 @@ std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const 
 double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, const double& e1) {
     const double err_max = 1;
     double lower_bound = 0.0;
-    double upper_bound = 130.0;
+    double upper_bound = 3000.0;
     int status;
     //double guess = lower_bound + (3 - sqrt(5)/2)*(upper_bound-lower_bound);
     double root;
@@ -229,7 +229,8 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
     } while (status == GSL_CONTINUE);
     //std::cout << "err " << F_chi_minima(root) << std::endl;
     //std::cout << "err(est)" << upper_bound - lower_bound << std::endl;
-    std::cout << upper_bound << std::endl;
+    //std::cout << upper_bound << std::endl;
+    std::cout << root << std::endl;
     gsl_root_fsolver_free(s);
     return root;
 }
@@ -308,12 +309,14 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
 }
 
 double TOV_Family::calc_lambda_normalized(double K_norm, double F_chi_norm, double mass_norm) {
-    const int N_THREADS = 40;
+    const int N_THREADS = 10;
     double K = pow(10, normalize_inverse(K_norm, log10(K_MIN), log10(K_MAX)));
     double F_chi = normalize_inverse(F_chi_norm, F_CHI_MIN, F_CHI_MAX);
     double mass = normalize_inverse(mass_norm, M_MIN, M_MAX);
     double lambda = calc_lambda_parallel(K, F_chi, mass, N_THREADS);
-    return calc_lambda(K, F_chi, mass);
+    double lambda_norm = normalize(lambda, LAMBDA_MIN, LAMBDA_MAX); 
+
+    return lambda_norm;
 }
 
 void TOV_Family::generate_lambda_f_points() {

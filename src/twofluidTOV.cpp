@@ -1,16 +1,7 @@
+// cppimport
 #include "../include/TOV_family.hpp"
-//#include <boost/python.hpp>
 #include <pybind11/pybind11.h>
-/*
-using namespace boost::python;
 
-BOOST_PYTHON_MODULE(TOV_ext) {
-    class_<TOV_Family>("TOV_Family", init<>())
-    .def("calc_lambda_parallel", &TOV_Family::calc_lambda_parallel)
-    .def("calc_lambda", &TOV_Family::calc_lambda)
-    ;
-}
-*/
 namespace py = pybind11;
 PYBIND11_MODULE(twofluidTOV, m) {
     py::class_<EOS_Tabular>(m, "EOS_Tabular")
@@ -23,4 +14,14 @@ PYBIND11_MODULE(twofluidTOV, m) {
         .def("calc_lambda", &TOV_Family::calc_lambda);
 }
 
+
+/*
+<%
+cfg['dependencies'] = ['conversions.hpp', 'eos_poly.hpp', 'eos_tabular.hpp', 'eos.hpp', 'spline.h', 'TOV_family.hpp', 'twofluid_TOV.hpp']
+cfg['extra_link_args'] = ['`gsl-config --cflags --libs`']
+cfg['libraries'] = ['gsl']
+cfg['include_dirs'] = ['libInterpolate', 'Eigen', 'boost']
+setup_pybind11(cfg)
+%>
+*/
 

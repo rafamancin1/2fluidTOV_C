@@ -14,7 +14,7 @@ const double F_CHI_MAX = 1.0;
 const double M_MIN = 0.8;
 const double M_MAX = 1.4;
 const double LAMBDA_MIN = 0.0;
-const double LAMBDA_MAX = 5000;
+const double LAMBDA_MAX = 5000.0;
 const int N_SAMPLE = 200;
 
 class TOV_Family {
