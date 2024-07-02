@@ -164,7 +164,7 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2) : eos1(eos1), eos2(eos
     n_samples = N_SAMPLE;
     const double e1_min = 0.15;//eos1.e_min * CONVERSION::geom_to_dens_GeV_fm3;
     const double e1_max = eos1.e_max * CONVERSION::geom_to_dens_GeV_fm3;
-    e1s = linspace(e1_min, e1_max, n_samples);
+    e1s = linspace(e1_min, 1.81, n_samples);
     
 }
 
@@ -209,7 +209,7 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
     int status;
     //double guess = lower_bound + (3 - sqrt(5)/2)*(upper_bound-lower_bound);
     double root;
-    auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*calc_F_chi(K, e1, e2)-F_chi;};
+    auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*(calc_F_chi(K, e1, e2)-F_chi);};
     gsl_function_pp<decltype(F_chi_minima)> Fp(F_chi_minima);
     const gsl_root_fsolver_type *T;
 
@@ -224,13 +224,15 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
         upper_bound = gsl_root_fsolver_x_upper(s);
         lower_bound = gsl_root_fsolver_x_lower(s);
         
-        status = gsl_min_test_interval(lower_bound, upper_bound, 0.0, 0.1);
+        status = gsl_min_test_interval(lower_bound, upper_bound, 0.0, 0.01);
         
     } while (status == GSL_CONTINUE);
     //std::cout << "err " << F_chi_minima(root) << std::endl;
     //std::cout << "err(est)" << upper_bound - lower_bound << std::endl;
     //std::cout << upper_bound << std::endl;
-    std::cout << root << std::endl;
+    //std::cout << root << std::endl;
+    //std::cout << "err " << F_chi_minima(root) << std::endl;
+
     gsl_root_fsolver_free(s);
     return root;
 }

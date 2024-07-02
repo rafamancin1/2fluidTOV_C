@@ -234,13 +234,15 @@ void TwoFluid_TOV::print_result(TOV_result& result) {
     const double R_D_km = result.R_D * CONVERSION::m_to_km;
     const double M_Msun = result.M * CONVERSION::mass_geom_to_Msun;
     const double R = result.R * CONVERSION::m_to_km;
+    const double lambda = result.lambda;
 
     std::cout << "Baryon mass(M_sun) = " << M_B_Msun << std::endl;
     std::cout << "DM mass(M_sun) = " << M_D_Msun << std::endl;
     std::cout << "Baryon radius(km) = " << R_B_km << std::endl;
     std::cout << "DM radius(km) = " << R_D_km << std::endl;
     std::cout << "Total mass(M_sun) = " << M_Msun << std::endl;
-    std::cout << "Radius(km) = " << R << std::endl; 
+    std::cout << "Radius(km) = " << R << std::endl;
+    std::cout << "Lambda = " << lambda << std::endl; 
     std::cout << "F_chi = " << F_chi << std::endl;
 };
 

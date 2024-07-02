@@ -44,10 +44,11 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     //remove_leading_zero(log_e_tab);
     //remove_leading_zero(log_p_tab);
     int tab_size = log_e_tab.size();
-    p_surface = pow(10, log_p_tab[0]);
+    //p_surface = pow(10, log_p_tab[0]);
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
     p_max = pow(10, log_p_tab.back());
+    p_surface = 1e-9*p_max;
     f_eos.close();
     //double log_e_tab_c[tab_size];
     //double log_p_tab_c[tab_size];
