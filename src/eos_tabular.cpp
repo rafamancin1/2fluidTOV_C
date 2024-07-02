@@ -3,8 +3,8 @@
 #include <cmath>
 #include "../include/spline.h"
 #include "../boost/math/interpolators/pchip.hpp"
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_spline.h>
+//#include <gsl/gsl_errno.h>
+//#include <gsl/gsl_spline.h>
 #include <gsl/gsl_vector.h>
 
 
@@ -43,13 +43,14 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     }
     //remove_leading_zero(log_e_tab);
     //remove_leading_zero(log_p_tab);
-    int tab_size = log_e_tab.size();
+    tab_size = log_e_tab.size();
     //p_surface = pow(10, log_p_tab[0]);
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
     p_max = pow(10, log_p_tab.back());
     p_surface = 1e-9*p_max;
     f_eos.close();
+    initialize_splines(&log_e_tab[0], &log_p_tab[0]);
     //double log_e_tab_c[tab_size];
     //double log_p_tab_c[tab_size];
     /*
@@ -68,13 +69,43 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     //gsl_interp_accel *acc_p = gsl_interp_accel_alloc();
     //gsl_spline *e_of_p = gsl_spline_alloc(gsl_interp_cspline, tab_size);
     //gsl_spline_init(e_of_p, log_e_tab_c, log_p_tab_c, tab_size);
-    e_p = tk::spline(log_p_tab, log_e_tab); //e_of_p;
-    p_e = tk::spline(log_e_tab, log_p_tab); //p_of_e;
+    //e_p = tk::spline(log_p_tab, log_e_tab); //e_of_p;
+    //p_e = tk::spline(log_e_tab, log_p_tab); //p_of_e;
     //e_p.setData(log_p_tab, log_e_tab);
     //p_e.setData(log_e_tab, log_p_tab);
     //free(log_e_tab_c);
     //free(log_p_tab_c);
 };
+
+EOS_Tabular::~EOS_Tabular() {
+    gsl_spline_free(e_of_p);
+    gsl_spline_free(p_of_e);
+    gsl_interp_accel_free(acc_e);
+    gsl_interp_accel_free(acc_p);
+    //free(log_e_tab_c);
+    //free(log_p_tab_c);
+    //log_e_tab_c = nullptr;
+    //log_p_tab_c = nullptr;
+}
+
+void EOS_Tabular::initialize_splines(double* log_e_tab_ptr, double* log_p_tab_ptr) {
+    acc_e = gsl_interp_accel_alloc();
+    acc_p = gsl_interp_accel_alloc();
+    e_of_p = gsl_spline_alloc(gsl_interp_cspline, tab_size);
+    p_of_e = gsl_spline_alloc(gsl_interp_cspline, tab_size);
+    gsl_spline_init(e_of_p, log_p_tab_ptr, log_e_tab_ptr, tab_size);
+    gsl_spline_init(p_of_e, log_e_tab_ptr, log_p_tab_ptr, tab_size);
+    //free(log_e_tab_c);
+    //free(log_p_tab_c);
+}
+
+double EOS_Tabular::e_p(double pressure) {
+    return gsl_spline_eval(e_of_p, pressure, acc_e);
+}
+
+double EOS_Tabular::p_e(double energy) {
+    return gsl_spline_eval(p_of_e, energy, acc_p);
+}
 
 void EOS_Tabular::remove_leading_zero(std::vector<double>& x_tab) {
     if (x_tab[0] == 0) {

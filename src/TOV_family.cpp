@@ -338,7 +338,7 @@ void TOV_Family::generate_lambda_f_points() {
                 progress = index/pow(GRID_SIZE, 3);
                 index++;
                 std::cout << "Progress: ";
-                std::cout << float(progress*100.0) << "%\r";
+                std::cout << float(progress*100.0) << "% \r";
                 std::cout.flush();
             }
         }
@@ -366,20 +366,8 @@ void TOV_Family::initialize_splines(const std::vector<double>& e1s, const std::v
     }
     sort_mass();
     remove_equal_entries();
-    std::vector<double> Ms_copy = Ms;
-    std::vector<double> Rs_copy = Rs;
-    std::vector<double> k2s_copy = k2s;
-    //tk::spline r_of_m(Ms, Rs);
-    //tk::spline k2_of_m(Ms, k2s);
     r_m.setData(Ms, Rs);
     k2_m.setData(Ms, k2s);
-
-    //r_m = pchip(std::move(Ms_copy), std::move(Rs_copy));
-    Ms_copy = Ms;
-    //k2_m = pchip(std::move(Ms_copy), std::move(k2s_copy));
-    //r_m = r_of_m;
-    //k2_m = k2_of_m;
-    //std::cout << "Splines initialized" << std::endl;
 }
 
 double TOV_Family::radius_from_mass(double mass) {

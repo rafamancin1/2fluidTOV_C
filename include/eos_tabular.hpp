@@ -8,6 +8,8 @@
 #include <filesystem>
 #include "../libInterpolate/Interpolate.hpp"
 #include "../boost/function.hpp"
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h>
 
 class EOS_Tabular : public EOS {
     public:
@@ -18,6 +20,7 @@ class EOS_Tabular : public EOS {
         //EOS_Tabular(EOS_Tabular&&);
         //EOS_Tabular();
         EOS_Tabular(EOS_Tabular&&);
+        ~EOS_Tabular();
 
     public:
         double p_surface;
@@ -27,6 +30,7 @@ class EOS_Tabular : public EOS {
         double energy_from_pressure(const double&);
         double pc_from_ec(const double&);
         double dedp(const double&);
+        int tab_size;
 
     private:
         void remove_leading_zero(std::vector<double>&);
@@ -40,8 +44,16 @@ class EOS_Tabular : public EOS {
         // boost::math::interpolators::pchip<std::vector<double>>* p_e;
         //boost::function<double (double)> e_p;
         //boost::function<double (double)> p_e;     
-        std::function<double (double)> e_p;
-        std::function<double (double)> p_e;
+        //std::function<double (double)> e_p;
+        //std::function<double (double)> p_e;
+        void initialize_splines(double*, double*);
+        gsl_interp_accel* acc_e;
+        gsl_interp_accel* acc_p;
+        gsl_spline* e_of_p;
+        gsl_spline* p_of_e;
+        double e_p(double);
+        double p_e(double);
+
         
         //_1D::CubicSplineInterpolator<double> e_p;
         //_1D::CubicSplineInterpolator<double> p_e;
