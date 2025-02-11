@@ -1,7 +1,6 @@
 #include "../include/eos_tabular.hpp"
 #include <iostream>
 #include <cmath>
-#include "../include/spline.h"
 #include "../boost/math/interpolators/pchip.hpp"
 //#include <gsl/gsl_errno.h>
 //#include <gsl/gsl_spline.h>
@@ -48,7 +47,7 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
     p_max = pow(10, log_p_tab.back());
-    p_surface = 1e-9*p_max;
+    p_surface = 1e-10*p_max;
     f_eos.close();
     initialize_splines(&log_e_tab[0], &log_p_tab[0]);
     //double log_e_tab_c[tab_size];
@@ -91,8 +90,8 @@ EOS_Tabular::~EOS_Tabular() {
 void EOS_Tabular::initialize_splines(double* log_e_tab_ptr, double* log_p_tab_ptr) {
     acc_e = gsl_interp_accel_alloc();
     acc_p = gsl_interp_accel_alloc();
-    e_of_p = gsl_spline_alloc(gsl_interp_cspline, tab_size);
-    p_of_e = gsl_spline_alloc(gsl_interp_cspline, tab_size);
+    e_of_p = gsl_spline_alloc(gsl_interp_steffen, tab_size);
+    p_of_e = gsl_spline_alloc(gsl_interp_steffen, tab_size);
     gsl_spline_init(e_of_p, log_p_tab_ptr, log_e_tab_ptr, tab_size);
     gsl_spline_init(p_of_e, log_e_tab_ptr, log_p_tab_ptr, tab_size);
     //free(log_e_tab_c);

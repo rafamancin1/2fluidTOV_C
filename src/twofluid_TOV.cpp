@@ -3,6 +3,8 @@
 #include "../include/conversions.hpp"
 #include <boost/bind.hpp>
 #include <cmath>
+#include <gsl/gsl_odeiv2.h>
+#include <numeric>
 
 
 
@@ -11,15 +13,14 @@
 TwoFluid_TOV::TwoFluid_TOV(EOS_Tabular& eos1, EOS_Poly& eos2) : eos1(eos1), eos2(eos2), M_B(0), M_D(0), R_B(0), R_D(0), M(0), R(0), dr_min(1e-2) {};
 // TwoFluid_TOV::TwoFluid_TOV(EOS_Poly* eos1, EOS_Poly* eos2) : eos1(eos1), eos2(eos2) {};
 
-void TwoFluid_TOV::twofluid_tov_eqns(const tov_state& y, tov_state& dydr, double r) {
+int TwoFluid_TOV::twofluid_tov_eqns(double const r, const double* const y, double* const dydr) {
     const double m1 = y[0];
     const double m2 = y[1];
     const double p1 = y[2] > eos1.p_surface ? y[2] : 0.0;
     const double p2 = y[3] > eos2.p_surface ? y[3] : 0.0;
     const double y_r = y[4];
-
-    if (p1 == 0.0 && M_B == 0) {M_B = m1; R_B = r;}
-    if (p2 == 0.0 && M_D == 0) {M_D = m2; R_D = r;}
+    if (p1 == 0.0 && M_B == 0) {M_B = m1, R_B = r;}
+    if (p2 == 0.0 && M_D == 0) {M_D = m2, R_D = r;}
 
     const double e1 = (eos1.energy_from_pressure)(p1);
     const double e2 = (eos2.energy_from_pressure)(p2);
@@ -50,41 +51,11 @@ void TwoFluid_TOV::twofluid_tov_eqns(const tov_state& y, tov_state& dydr, double
     dydr[2] = dp1dr;
     dydr[3] = dp2dr;
     dydr[4] = dy_rdr;
+    return GSL_SUCCESS;
 };
 
+/*
 void TwoFluid_TOV::tov_step(controlled_runge_kutta<runge_kutta_dopri5<tov_state>>& stepper, tov_state& y, double& r, double& dr) {
-    const int max_tries = 2;
-    int j = 0;
-    controlled_step_result res = fail;
-    while (res != success && j < max_tries) {
-        tov_state y_old = y;
-        double r_old = r;
-        double dr_old = dr;
-        res = stepper.try_step(boost::bind(&TwoFluid_TOV::twofluid_tov_eqns, this, _1, _2, _3), y, r, dr);
-        if (y[2] < 0 || y[3] < 0) {
-            // std::cout << "Pressure went negative. Decreasing step-size" << std::endl;
-            y = y_old;
-            r = r_old;
-            dr = dr_old - 10.0 > 0 ? dr_old - 10.0 : dr_min;
-            // just in case this is a possibility, which I don't know  
-            if (res == success) { res = fail;} 
-        };
-        if (y[2] <= eos1.p_surface && y[2] != 0) {y[2] = 0;};
-        if (y[3] <= eos2.p_surface && y[3] != 0) {y[3] = 0;};
-        j++;
-
-    };
-    if (j == max_tries) {
-        // std::cout << "Max number of step trials reached. Decreasing dr_min" << std::endl;
-        dr_min *= 1e-1;
-    }
-    else {
-        if (dr_min < 1e-1) {dr_min *= 10;};
-    }
-    
-};
-
-void TwoFluid_TOV::tov_step_v2(controlled_runge_kutta<runge_kutta_dopri5<tov_state>>& stepper, tov_state& y, double& r, double& dr) {
     tov_state y_old = y;
     double r_old = r;
     //double dr_old = dr;
@@ -107,6 +78,7 @@ void TwoFluid_TOV::tov_step_v2(controlled_runge_kutta<runge_kutta_dopri5<tov_sta
     };
     
 }
+*/
 
 TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
     // Some conversions first...
@@ -116,7 +88,7 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
 
 
     //Initialize variables
-    double dr = 10;
+    double dr = 0.1;
     const double p01 = eos1.pc_from_ec(e01);
     const double p02 = eos2.pc_from_ec(e02);
 
@@ -144,15 +116,21 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
     */
     double r = dr;
     // Integrator
-    controlled_runge_kutta<runge_kutta_dopri5<tov_state>> c_rk;
+    const int sys_dim = 5;
+    gsl_odeiv2_system sys = {twofluid_tov_eqns_gsl, NULL, sys_dim, reinterpret_cast<void *>(::std::addressof(*this))};
+    const gsl_odeiv2_step_type* stepper_type = gsl_odeiv2_step_rk8pd;
+    gsl_odeiv2_step* stepper = gsl_odeiv2_step_alloc(stepper_type, sys_dim);
+    gsl_odeiv2_control* stepper_control = gsl_odeiv2_control_y_new(0.0, 1e-8);
+    gsl_odeiv2_evolve* ode_ev = gsl_odeiv2_evolve_alloc(sys_dim);
+    //controlled_runge_kutta<runge_kutta_dopri5<tov_state>> c_rk;
     //rosenbrock4_controller<double> c_rk;
     //controlled_runge_kutta<runge_kutta_fehlberg78<tov_state>> c_rk;
     // Control variables
     int i = 0;
     const int max_steps = 10000;
+    const double r_max = 1e6;
     while ((y[2] > eos1.p_surface ||  y[3] > eos2.p_surface) && (i < max_steps)) {
-        tov_step_v2(c_rk, y, r, dr);
-
+        int status = gsl_odeiv2_evolve_apply(ode_ev, stepper_control, stepper, &sys, &r, r_max, &dr, &y[0]);
         if (y[2] == 0.0 && y[3] == 0.0) {break;}
         i++;
     };
@@ -161,7 +139,7 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
     double y_r = y[4];
     if (i == max_steps) {std::cout << "Max number of steps reached! Solution may be incomplete" << std::endl;};
     M = M_B + M_D;
-    R = R_B;
+    R = R_B > R_D ? R_B : R_D;
     if (M_B != 0 && M_D != 0) {F_chi = M_D / M;}
     else {
         if (M_D == 0 && e02 != 0) {
@@ -183,6 +161,9 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
                          .M=M, .R=R,
                          .F_chi=F_chi, .k2=k2,
                          .lambda=lambda};
+    gsl_odeiv2_evolve_free(ode_ev);
+    gsl_odeiv2_control_free(stepper_control);
+    gsl_odeiv2_step_free(stepper);
     return result;
 };
 

@@ -3,7 +3,6 @@
 #include <boost/math/tools/minima.hpp>
 #include <boost/bind.hpp>
 #include "../include/conversions.hpp"
-#include "../include/spline.h"
 #include <bits/stdc++.h>
 #include <algorithm>
 #include <gsl/gsl_math.h>
@@ -15,6 +14,7 @@
 using boost::math::interpolators::pchip;
 using boost::math::tools::brent_find_minima;
 using boost::bind;
+EOS_Poly null_eos("Polytropic", 0.0, 0.0);
 
 const int GRID_SIZE = 30;
 
@@ -162,10 +162,31 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, std::vector<double>& e
 
 TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2) : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
     n_samples = N_SAMPLE;
-    const double e1_min = 0.15;//eos1.e_min * CONVERSION::geom_to_dens_GeV_fm3;
-    const double e1_max = eos1.e_max * CONVERSION::geom_to_dens_GeV_fm3;
-    e1s = linspace(e1_min, 1.81, n_samples);
-    
+    const double e1_min = 0.55;//eos1.e_min * CONVERSION::geom_to_dens_GeV_fm3;
+    const double e1_max = 2.4;
+    //std::cout << "Initializing TOV Family with e_min=" << e1_min << " and e_max=" << e1_max << std::endl;
+    assert(e1_max > 0 && e1_max > e1_min);
+    //e1s = linspace(e1_min, e1_max, n_samples);
+}
+
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, double F_chi) : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
+    n_samples = N_SAMPLE;
+    const double e1_min = 0.15;
+    const double e1_max = 2.4; //eos1.e_max * CONVERSION::geom_to_fm3 - 0.2;
+    //std::cout << e1_max << std::endl;
+    assert(e1_max > 0);
+    e1s = linspace(e1_min, e1_max, n_samples);
+    generate_e2s_from_F_chi(eos2.K, F_chi);
+    initialize_splines(e1s, e2s);
+}
+
+TOV_Family::TOV_Family(EOS_Tabular& eos1) : eos1(eos1), eos2(null_eos), n_samples(N_SAMPLE) {
+    const double e1_min = 0.3;
+    const double e1_max = 1.44;//eos1.e_max * CONVERSION::geom_to_fm3 - 0.1;
+    assert(e1_max > 0);
+    e1s = linspace(e1_min, e1_max, n_samples);
+    e2s = std::vector<double>(n_samples, 0.0);
+    initialize_splines(e1s, e2s);
 }
 
 double TOV_Family::calc_F_chi(const double& K, const double& e1, const double& e2) {
@@ -179,7 +200,7 @@ std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const 
     const int double_bits = std::numeric_limits<double>::digits;
     const double err_max = 1;
     double lower_bound = 0.0;
-    double upper_bound = 130.0;
+    double upper_bound = 300.0;
     /*
     if (F_chi != 1) {
         double factor = pow(5.0, log10(K/1e7)) * (1e9/K) * (F_chi / (1.0-F_chi));
@@ -203,9 +224,9 @@ std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const 
 }
 
 double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, const double& e1) {
-    const double err_max = 1;
+    const double err_max = 0.01;
     double lower_bound = 0.0;
-    double upper_bound = 3000.0;
+    double upper_bound = 300.0;
     int status;
     //double guess = lower_bound + (3 - sqrt(5)/2)*(upper_bound-lower_bound);
     double root;
@@ -216,8 +237,20 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
     gsl_root_fsolver *s;
     gsl_function *F = static_cast<gsl_function*>(&Fp);
     T = gsl_root_fsolver_brent;
-    s = gsl_root_fsolver_alloc(T); 
-    gsl_root_fsolver_set(s, F, lower_bound, upper_bound);
+    s = gsl_root_fsolver_alloc(T);
+    gsl_error_handler_t *default_handler = gsl_set_error_handler_off();
+    int max_tries = 100;
+    int n_tries = 0;
+    do { 
+        status = gsl_root_fsolver_set(s, F, lower_bound, upper_bound);
+        if (status == GSL_EINVAL) { // endpoints do not straddle means supplied bounds are invalid
+            upper_bound += 100;
+        }
+        n_tries++;
+    } while (status == GSL_EINVAL && n_tries <= max_tries);
+    if (status == GSL_EINVAL) {
+        std::cout << "Could not find working upper bound"; 
+    }
     do {
         status = gsl_root_fsolver_iterate(s);
         root = gsl_root_fsolver_root(s);
@@ -227,12 +260,16 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
         status = gsl_min_test_interval(lower_bound, upper_bound, 0.0, 0.01);
         
     } while (status == GSL_CONTINUE);
+    if (status) {
+        std::cout << "Status: " << status << std::endl;
+        std::cout << "Root finding did not converge" << std::endl;
+    }
     //std::cout << "err " << F_chi_minima(root) << std::endl;
     //std::cout << "err(est)" << upper_bound - lower_bound << std::endl;
     //std::cout << upper_bound << std::endl;
     //std::cout << root << std::endl;
     //std::cout << "err " << F_chi_minima(root) << std::endl;
-
+    gsl_set_error_handler(default_handler); // to reset the error handler
     gsl_root_fsolver_free(s);
     return root;
 }
@@ -249,14 +286,30 @@ void TOV_Family::add_to_vector(double K, double F_chi, int index_start, int inde
     }
 }
 
+void TOV_Family::generate_e2s_from_F_chi(double K, double F_chi) {
+    if (F_chi == 0.0 || K == 0.0) {
+        e2s = std::vector<double>(n_samples, 0.0);
+    }
+    else {
+        e2s = std::vector<double>(N_SAMPLE);
+        for (int i = 0; i < N_SAMPLE; i++) {
+            double e2 = calc_e2_from_F_chi_v2(K, F_chi, e1s[i]);
+            e2s[i] = e2;
+        }
+    }
+}
+
+TOV_result TOV_Family::calc_lambda_and_mass_directly(double e1, double F_chi) {
+    TwoFluid_TOV model(eos1, eos2);
+    double e2 = calc_e2_from_F_chi_v2(eos2.K, F_chi, e1);
+    TOV_result result = model.integrate_two_fluid_tov(e1, e2);
+    return result;
+}
+
 double TOV_Family::calc_lambda(const double K, const double F_chi, const double mass) {
     //std::vector<double> e1s = linspace(0.15, 3.0, N_SAMPLE);
     eos2.K = K;
-    e2s = std::vector<double>(N_SAMPLE);
-    for (int i = 0; i < N_SAMPLE; i++) {
-        double e2 = calc_e2_from_F_chi_v2(K, F_chi, e1s[i]);
-        e2s[i] = e2;
-    }
+    generate_e2s_from_F_chi(K, F_chi);
     initialize_splines(e1s, e2s);
     return lambda_from_mass(mass);
 }
@@ -362,10 +415,15 @@ void TOV_Family::initialize_splines(const std::vector<double>& e1s, const std::v
         Rs.push_back(res.R);
         Ms.push_back(res.M);
         k2s.push_back(res.k2);
+        lambdas.push_back(res.lambda);
+        //std::cout << "E ";
+        //std::cout << e1s[i] << std::endl;
+        //std::cout << "Mass ";
+        //std::cout << res.M * CONVERSION::mass_geom_to_Msun << std::endl;
         model.reset_state();
     }
-    sort_mass();
-    remove_equal_entries();
+    //sort_mass();
+    //remove_equal_entries();
     r_m.setData(Ms, Rs);
     k2_m.setData(Ms, k2s);
 }

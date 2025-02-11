@@ -19,6 +19,7 @@ ext_modules = [
         sorted(glob("src/*.cpp")),
         # Example: passing in the version to the compiled code
         define_macros=[("VERSION_INFO", __version__)],
+        extra_link_args=['-lgsl', '-lgslcblas', '-lm']
     ),
 ]
 

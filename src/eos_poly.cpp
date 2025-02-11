@@ -5,8 +5,9 @@
 
 using boost::math::tools::brent_find_minima; //Brent's method to locate minima of function 
 
-EOS_Poly::EOS_Poly(std::string eos_name, const double K, const double Gamma) : EOS(eos_name, "Polytropic"), K(K), Gamma(Gamma), p_surface(1e-23) {};
+EOS_Poly::EOS_Poly(std::string eos_name, const double K, const double Gamma) : EOS(eos_name, "Polytropic"), K(K), Gamma(Gamma), p_surface(1e-70) {};
 EOS_Poly::EOS_Poly(const EOS_Poly& other) : EOS_Poly{other.eos_name, other.K, other.Gamma} {};
+EOS_Poly::EOS_Poly() : EOS_Poly("null", 0.0, 0.0) {};
 
 double EOS_Poly::pc_from_ec(const double& central_energy) {
     /*this function is called only to find the central pressure given the value of central energy density  
@@ -27,6 +28,6 @@ double EOS_Poly::pc_from_ec(const double& central_energy) {
       pressureCheck = p_c.first+0.005;
       BrentWentBad = (pressureCheck-K*pow(central_energy-pressureCheck/(Gamma-1.0),Gamma))<0 || fabs(p_c.second)>1e-5 || std::isnan(p_c.second);
     }
-    p_surface = p_c.first*1e-10;
+    p_surface = 1e-70;
     return p_c.first;
 }

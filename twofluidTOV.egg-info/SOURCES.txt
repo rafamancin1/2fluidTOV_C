@@ -1,12 +1,12 @@
 pyproject.toml
 setup.py
 src/TOV_family.cpp
-src/TOV_wrapper.cpp
 src/conversions.cpp
 src/eos.cpp
 src/eos_poly.cpp
 src/eos_tabular.cpp
 src/main.cpp
+src/twofluidTOV.cpp
 src/twofluid_TOV.cpp
 twofluidTOV.egg-info/PKG-INFO
 twofluidTOV.egg-info/SOURCES.txt

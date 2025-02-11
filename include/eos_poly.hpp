@@ -11,6 +11,7 @@ class EOS_Poly : public EOS {
         EOS_Poly(std::string, const double, const double);
         // Copy constructor
         EOS_Poly(const EOS_Poly&);
+        EOS_Poly();
 
     public:
         double K;
