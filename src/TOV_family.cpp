@@ -415,6 +415,8 @@ void TOV_Family::initialize_splines(const std::vector<double>& e1s, const std::v
         Rs.push_back(res.R);
         Ms.push_back(res.M);
         k2s.push_back(res.k2);
+        RBs.push_back(res.R_B);
+        RDs.push_back(res.R_D);
         lambdas.push_back(res.lambda);
         //std::cout << "E ";
         //std::cout << e1s[i] << std::endl;

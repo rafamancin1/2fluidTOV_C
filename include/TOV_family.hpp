@@ -36,7 +36,7 @@ class TOV_Family {
         double calc_lambda_parallel(const double, const double, const double, const int);
         void write_to_file();
         void generate_lambda_f_points();
-        std::vector<double> Rs, Ms, k2s, lambdas;
+        std::vector<double> Rs, Ms, k2s, lambdas, RBs, RDs;
         EOS_Tabular& eos1;
         EOS_Poly& eos2;   
         std::vector<double> e1s;

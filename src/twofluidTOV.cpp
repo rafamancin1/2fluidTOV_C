@@ -20,7 +20,9 @@ PYBIND11_MODULE(twofluidTOV, m) {
         .def_readonly("Ms", &TOV_Family::Ms)
         .def_readonly("k2s", &TOV_Family::k2s)
         .def_readonly("e1s", &TOV_Family::e1s)
-        .def_readonly("e2s", &TOV_Family::e2s);
+        .def_readonly("e2s", &TOV_Family::e2s)
+        .def_readonly("RBs", &TOV_Family::RBs)
+        .def_readonly("RDs", &TOV_Family::RDs);
     py::class_<TwoFluid_TOV>(m, "TwoFluid_TOV")
         .def(py::init<EOS_Tabular&, EOS_Poly&>())
         .def("integrate_two_fluid_tov", &TwoFluid_TOV::integrate_two_fluid_tov);

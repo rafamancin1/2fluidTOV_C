@@ -120,7 +120,7 @@ TOV_result TwoFluid_TOV::integrate_two_fluid_tov(double e01, double e02) {
     gsl_odeiv2_system sys = {twofluid_tov_eqns_gsl, NULL, sys_dim, reinterpret_cast<void *>(::std::addressof(*this))};
     const gsl_odeiv2_step_type* stepper_type = gsl_odeiv2_step_rk8pd;
     gsl_odeiv2_step* stepper = gsl_odeiv2_step_alloc(stepper_type, sys_dim);
-    gsl_odeiv2_control* stepper_control = gsl_odeiv2_control_y_new(0.0, 1e-8);
+    gsl_odeiv2_control* stepper_control = gsl_odeiv2_control_y_new(0.0, 1e-8); // 1e-8 is the absolute error
     gsl_odeiv2_evolve* ode_ev = gsl_odeiv2_evolve_alloc(sys_dim);
     //controlled_runge_kutta<runge_kutta_dopri5<tov_state>> c_rk;
     //rosenbrock4_controller<double> c_rk;

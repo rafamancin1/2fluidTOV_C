@@ -22,7 +22,7 @@ def main():
         plot_name = "MR_plots"
         ax.set_xlabel("R (km)")
         ax.set_ylabel(r"M ($M_\odot$)")
-        ax.set_xlim(8, 20)
+        #ax.set_xlim(8, 20)
     elif args.mode == 'lambdaM':
         plot_name = "lambda_plots"
         ax.set_xlabel(r'M ($M_\odot$)')
@@ -35,7 +35,12 @@ def main():
         ax.set_xlabel(r'$\epsilon_1$')
         ax.set_ylabel(r'M ($M_\odot$)')
         ax.set_xlim(0.15, 2.4)
-
+    elif args.mode == 'RM':
+        plot_name = "RM_plots"
+        ax.set_xlabel(r'M ($M_\odot$)')
+        ax.set_ylabel("R (km)")
+        #ax.set_xlim(1.0, 2.6)
+        #ax.set_ylim
     elif args.mode == 'test':
         eos1 = twofluidTOV.EOS_Tabular(args.eos1[0])
         eos2 = twofluidTOV.EOS_Poly(args.eos2, args.Achi[0], args.Gamma)
@@ -63,6 +68,9 @@ def main():
                     A_chi_str = '0'
                 plot_label = r'$A_\chi = $' + A_chi_str
                 create_plot(eos1, plot_label, ax, eos2, args.Fchi[0], args.mode) 
+        else:
+            eos2 = twofluidTOV.EOS_Poly(args.eos2, args.Achi[0], args.Gamma)
+            create_plot(eos1, None, ax, eos2, args.Fchi[0], args.mode)
     else:
         for eos_name in args.eos1:
             eos1 = twofluidTOV.EOS_Tabular(eos_name)
@@ -91,6 +99,12 @@ def create_plot(eos1, plot_label, ax, eos2=None, F_chi=None, mode='MR'):
         e1s = np.array(fam.e1s)
         Ms = np.array(fam.Ms) * mass_geom_to_Msun
         ax.plot(e1s, Ms, label=plot_label)
+    elif mode == 'RM':
+        Ms = np.array(fam.Ms) * mass_geom_to_Msun
+        RBs = np.array(fam.RBs) / 1e3
+        RDs = np.array(fam.RDs) / 1e3
+        ax.plot(Ms, RBs, label=r"$R_B$")
+        ax.plot(Ms, RDs, label=r"$R_D$")
 
 if __name__ == "__main__":
     main()

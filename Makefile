@@ -7,7 +7,7 @@ HEAD_DIR=include
 EXEC=TWO_FLUID_TOV
 
 SOURCES=$(addprefix $(SRC_DIR)/, \
-	main.cpp conversions.cpp eos.cpp eos_tabular.cpp eos_poly.cpp twofluid_TOV.cpp TOV_family.cpp LSODA.cpp )
+	main.cpp conversions.cpp eos.cpp eos_tabular.cpp eos_poly.cpp twofluid_TOV.cpp TOV_family.cpp )
 
 OBJECTS=$(SOURCES:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
 
