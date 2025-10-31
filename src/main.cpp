@@ -3,6 +3,7 @@
 
 #include "../include/eos_tabular.hpp"
 #include "../include/eos_poly.hpp"
+#include "../include/eos_SIDM.hpp"
 #include "../include/twofluid_TOV.hpp"
 #include "../include/TOV_family.hpp"
 //#include "../include/utils.hpp"
@@ -52,6 +53,8 @@ int main(int argc, char* argv[]) {
                     sscanf(argv[i+1], "%lf", &F_chi);
                     break;
                 default:
+                    std::cout << "Unknown option: " << argv[i] << std::endl;
+                    std::cout << "Usage: " << argv[0] << " -t <tabular_eos_name> -g <Gamma> -k <K> -b <e01> -d <e02> -c <F_chi> [-f] [-O] [-T]" << std::endl;
                     exit(1);
                     break;
             }
@@ -60,8 +63,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Starting" << std::endl;
     std::cout << "Tabular EOS name: " << tabular_eos_name << std::endl;
     EOS_Tabular eos1(tabular_eos_name);
-    std::cout << "Polytropic EOS has K=" << K << " and Gamma=" << Gamma << std::endl;
-    EOS_Poly eos2("DM_Polytropic", K, Gamma);
+    //std::cout << "Polytropic EOS has K=" << K << " and Gamma=" << Gamma << std::endl;
+    std::cout << "SIDM EOS has m_chi=" << K << " and lambda_chi=" << Gamma << std::endl;
+    EOS_SIDM eos2(K, Gamma);
+    //EOS_Poly eos2("Polytropic", K, Gamma);
     TwoFluid_TOV model(eos1, eos2);
     const int n_samples = 200;
     if (test) {
@@ -70,7 +75,7 @@ int main(int argc, char* argv[]) {
         // double time1 = (double) clock() / CLOCKS_PER_SEC;
         std::chrono::time_point time1 = std::chrono::high_resolution_clock::now();
         //double lambda = sols.calc_lambda_parallel(K, F_chi, 1.2, 10);
-        double lambda = sols.calc_lambda(K, F_chi, 1.2);
+        double lambda = sols.calc_lambda(F_chi, 1.2);
         //std::cout << "e1 is " << e01 << std::endl;
         //test_calc_e2(K, 0.1, e01);
         //double time2 = (double) clock() / CLOCKS_PER_SEC;

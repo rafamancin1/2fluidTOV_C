@@ -1,8 +1,12 @@
 #ifndef TOV_FAMILY_HPP
 #define TOV_FAMILY_HPP
 
+#include "eos_analytic.hpp"
+#include "eos_tabular.hpp"
+#include "eos_poly.hpp"
+#include "eos_SIDM.hpp"
 #include "twofluid_TOV.hpp"
-#include <boost/function.hpp>
+//#include <boost/function.hpp>
 #include "../libInterpolate/Interpolate.hpp"
 
 template<typename T>
@@ -19,11 +23,11 @@ const int N_SAMPLE = 400;
 
 class TOV_Family {
     public:
-        TOV_Family(EOS_Tabular&, EOS_Poly&, const int);
-        TOV_Family(EOS_Tabular&, EOS_Poly&, std::string filename);
-        TOV_Family(EOS_Tabular&, EOS_Poly&, std::vector<double>&, std::vector<double>&);
-        TOV_Family(EOS_Tabular&, EOS_Poly&, double);
-        TOV_Family(EOS_Tabular&, EOS_Poly&); // For data generation
+        TOV_Family(EOS_Tabular&, EOS_Analytic&, int n_samples);
+        TOV_Family(EOS_Tabular&, EOS_Analytic&, std::string filename);
+        TOV_Family(EOS_Tabular&, EOS_Analytic&, std::vector<double>&, std::vector<double>&);
+        TOV_Family(EOS_Tabular&, EOS_Analytic&, double);
+        TOV_Family(EOS_Tabular&, EOS_Analytic&);
         TOV_Family(EOS_Tabular&);
         TOV_Family();
         //TOV_Family(std::string); // For python wrapping
@@ -31,14 +35,17 @@ class TOV_Family {
         double k2_from_mass(double);
         double lambda_from_mass(double);
         TOV_result calc_lambda_and_mass_directly(double, double);
-        double calc_lambda(const double, const double, const double);
+        TOV_result calc_lambda_and_mass_directly_v2(double, double);
+        double calc_lambda(const double, const double);
         double calc_lambda_normalized(double, double, double);
-        double calc_lambda_parallel(const double, const double, const double, const int);
+        double calc_lambda_parallel(const double, const double, const int);
+        double calc_e2_from_F_chi_v2(const double&, const double&);
+        void set_analytic_eos(EOS_Analytic& eos2);
         void write_to_file();
         void generate_lambda_f_points();
         std::vector<double> Rs, Ms, k2s, lambdas, RBs, RDs;
         EOS_Tabular& eos1;
-        EOS_Poly& eos2;   
+        EOS_Analytic& eos2;
         std::vector<double> e1s;
         std::vector<double> e2s;
     private:
@@ -48,15 +55,15 @@ class TOV_Family {
         _1D::CubicSplineInterpolator<double> k2_m;
 
         std::vector<int> bad_indexes;
-        void generate_e2s_from_F_chi(double, double);
+        void generate_e2s_from_F_chi(double);
+        void generate_e2s_from_F_chi_v2(double, double); // e2 = F_chi * e1
         void sort_mass();
         void remove_equal_entries();
         void initialize_splines(const std::vector<double>&, const std::vector<double>&);
-        std::pair<double, double> calc_e2_from_F_chi(const double&, const double&, const double&);
-        double calc_e2_from_F_chi_v2(const double&, const double&, const double&);
-        double calc_F_chi(const double&, const double&, const double&);
+        std::pair<double, double> calc_e2_from_F_chi(const double&, const double&);        
+        double calc_F_chi(const double&, const double&);
         void reset_state();
-        void add_to_vector(double, double, int, int);
+        void add_to_vector(double, int, int);
 
         static double normalize(const double X, const double X_min, const double X_max) {return (X-X_min)/(X_max-X_min);};
         static double normalize_inverse(const double X, const double X_min, const double X_max) {return (X_max-X_min)*X + X_min;};

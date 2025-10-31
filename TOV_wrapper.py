@@ -1,9 +1,13 @@
 import twofluidTOV
 
+geom_to_Msun = 0.0006772199944005382
+
 eos1 = twofluidTOV.EOS_Tabular("APR")
-eos2 = twofluidTOV.EOS_Poly("Polytropic", 1e7, 2)
+#eos2 = twofluidTOV.EOS_Poly("Polytropic", 1e7, 2)
+eos2 = twofluidTOV.EOS_SIDM(220, 3.1415)
 sols = twofluidTOV.TOV_Family(eos1, eos2)
-K = 1e7
-F_chi = 0.1
-mass = 1.3
-print(sols.calc_lambda_parallel(K, F_chi, mass, 20))
+res = sols.calc_lambda_and_mass_directly(0.46, 0.5)
+print(f"Mass={res.M * geom_to_Msun}")
+print(f"Lambda={res.lambda_param}")
+
+

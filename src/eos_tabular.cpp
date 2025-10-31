@@ -1,18 +1,18 @@
 #include "../include/eos_tabular.hpp"
 #include <iostream>
 #include <cmath>
-#include "../boost/math/interpolators/pchip.hpp"
+//#include "../boost/math/interpolators/pchip.hpp"
 //#include <gsl/gsl_errno.h>
 //#include <gsl/gsl_spline.h>
 #include <gsl/gsl_vector.h>
 
 
-using boost::math::interpolators::pchip; //Piecewise Cubic Hermite interpolation
+//using boost::math::interpolators::pchip; //Piecewise Cubic Hermite interpolation
 
 //Copy constructor 
 EOS_Tabular::EOS_Tabular(const EOS_Tabular& other) : EOS_Tabular{other.eos_name} {};
 // Project must always be directly under home
-EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
+EOS_Tabular::EOS_Tabular(std::string eos_name) : eos_name(eos_name), p_surface(0.0), e_min(0.0), e_max(0.0), p_max(0.0), tab_size(0) {
     std::string filename = eos_path / (eos_prefix + eos_name + eos_suffix);
     std::cout << filename << std::endl;
     std::filesystem::path home = getenv("HOME");
@@ -48,6 +48,7 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : EOS(eos_name, "Tabular") {
     e_max = pow(10, log_e_tab.back());
     p_max = pow(10, log_p_tab.back());
     p_surface = 1e-10*p_max;
+    //p_surface = 1e-20;
     f_eos.close();
     initialize_splines(&log_e_tab[0], &log_p_tab[0]);
     //double log_e_tab_c[tab_size];
@@ -123,6 +124,9 @@ double EOS_Tabular::pc_from_ec(const double& central_energy) {
     const double log_energy = log10(central_energy);
     const double exponent = p_e(log_energy);
     double p_tab = pow(10.0, exponent);
+    if (p_tab < p_max) {
+        p_surface = 1e-10*p_tab; 
+    }
     return p_tab;
 };
 

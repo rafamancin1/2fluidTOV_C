@@ -1,4 +1,5 @@
 #include "../include/conversions.hpp"
+#include <cmath>
  // Utils
 
  const double CONVERSION::MeV_fm3_to_GeV_fm3 = 1e-3;
@@ -10,6 +11,9 @@
  const double CONVERSION::m_to_km = 1e-3;
  const double CONVERSION::km_to_m = 1 / m_to_km;
 
+ const double CONVERSION::fm_to_MeV = 197.3;
+ const double CONVERSION::MeV_to_fm = 1/fm_to_MeV;
+
  // Pressure conversions
 const double CONVERSION::MeV_fm3_to_pa = 1.6022e32;
 const double CONVERSION::pa_to_MeV_fm3 = 1 / MeV_fm3_to_pa;
@@ -19,6 +23,12 @@ const double CONVERSION::pa_to_geom = 1 / geom_to_pa;
 
 const double CONVERSION::pres_MeV_fm3_to_geom = MeV_fm3_to_pa * pa_to_geom;
 const double CONVERSION::geom_to_pres_MeV_fm3 = 1 / pres_MeV_fm3_to_geom;
+
+const double CONVERSION::pres_MeV_fm3_to_MeV4 = std::pow(fm_to_MeV, 3);
+const double CONVERSION::MeV4_to_pres_MeV_fm3 = 1 / pres_MeV_fm3_to_MeV4;
+
+const double CONVERSION::pres_MeV4_to_geom = MeV4_to_pres_MeV_fm3 * pres_MeV_fm3_to_geom;
+const double CONVERSION::geom_to_pres_MeV4 = 1 / pres_MeV4_to_geom;
 
 // Density conversions
 const double CONVERSION::nucleon_m = 939.57; // in MeV
@@ -32,6 +42,12 @@ const double CONVERSION::geom_to_kg_m3 = 1 / kg_m3_to_geom;
 
 const double CONVERSION::dens_MeV_fm3_to_geom = MeV_fm3_to_kg_m3 * kg_m3_to_geom;
 const double CONVERSION::geom_to_dens_MeV_fm3 = 1 / dens_MeV_fm3_to_geom;
+
+const double CONVERSION::dens_MeV_fm3_to_MeV4 = std::pow(fm_to_MeV, 3);
+const double CONVERSION::MeV4_to_dens_MeV_fm3 = 1 / dens_MeV_fm3_to_MeV4;
+
+const double CONVERSION::dens_MeV4_to_geom = MeV4_to_dens_MeV_fm3 * dens_MeV_fm3_to_geom;
+const double CONVERSION::geom_to_dens_MeV4 = 1 / dens_MeV4_to_geom;
 
 const double CONVERSION::dens_GeV_fm3_to_geom = GeV_fm3_to_MeV_fm3 * dens_MeV_fm3_to_geom;
 const double CONVERSION::geom_to_dens_GeV_fm3 = 1 / dens_GeV_fm3_to_geom;

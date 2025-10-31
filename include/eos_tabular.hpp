@@ -1,17 +1,16 @@
 #ifndef EOS_TABULAR_HPP
 #define EOS_TABULAR_HPP
 
-#include "eos.hpp"
 #include <string>
 #include <fstream>
 #include <vector> 
 #include <filesystem>
-#include "../libInterpolate/Interpolate.hpp"
-#include "../boost/function.hpp"
+//#include "../libInterpolate/Interpolate.hpp"
+//#include "../boost/function.hpp"
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_spline.h>
 
-class EOS_Tabular : public EOS {
+class EOS_Tabular {
     public:
         EOS_Tabular(std::string);
         //Copy constructor
@@ -23,6 +22,7 @@ class EOS_Tabular : public EOS {
         ~EOS_Tabular();
 
     public:
+        std::string eos_name;
         double p_surface;
         double e_min;
         double e_max;

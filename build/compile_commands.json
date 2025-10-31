@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/rafaelms/2fluidTOV_C/build",
-  "command": "/usr/bin/g++   -g -o CMakeFiles/TWO_FLUID_TOV.dir/src/main.cpp.o -c /home/rafaelms/2fluidTOV_C/src/main.cpp",
-  "file": "/home/rafaelms/2fluidTOV_C/src/main.cpp"
-}
-]

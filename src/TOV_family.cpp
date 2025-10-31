@@ -1,5 +1,5 @@
 #include "../include/TOV_family.hpp"
-#include <boost/math/interpolators/pchip.hpp>
+//#include <boost/math/interpolators/pchip.hpp>
 #include <boost/math/tools/minima.hpp>
 #include <boost/bind.hpp>
 #include "../include/conversions.hpp"
@@ -11,7 +11,7 @@
 #include <gsl/gsl_roots.h>
 #include <boost/math/tools/roots.hpp> 
 
-using boost::math::interpolators::pchip;
+//using boost::math::interpolators::pchip;
 using boost::math::tools::brent_find_minima;
 using boost::bind;
 EOS_Poly null_eos("Polytropic", 0.0, 0.0);
@@ -121,7 +121,8 @@ class Grid3D {
 //inline void print_return()
 
 
-TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, const int n_samples = 200) : eos1(eos1), eos2(eos2), n_samples(n_samples) {
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Analytic& eos2, int n_samples)
+    : eos1(eos1), eos2(eos2), n_samples(n_samples) {
     const double e1_max = eos1.e_max * CONVERSION::geom_to_dens_GeV_fm3;
     const double e1_min = eos1.e_min * CONVERSION::geom_to_dens_GeV_fm3;
     const double e2_max = e1_max*10;
@@ -131,7 +132,8 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, const int n_samples = 
     initialize_splines(e1s, e2s);
 }
 
-TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, std::string filename) : eos1(eos1), eos2(eos2), n_samples(n_samples) {
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Analytic& eos2, std::string filename)
+    : eos1(eos1), eos2(eos2), n_samples(n_samples) {
     // TODO: must use filesystem::path to deal with file IO
     TwoFluid_TOV model(eos1, eos2);
     const std::string table_path = "fx_tables/";
@@ -155,12 +157,14 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, std::string filename) 
     initialize_splines(e1s, e2s);
 }
 
-TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, std::vector<double>& e1s, std::vector<double>& e2s) : eos1(eos1), eos2(eos2) {
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Analytic& eos2, std::vector<double>& e1s, std::vector<double>& e2s)
+    : eos1(eos1), eos2(eos2) {
     n_samples = e1s.size();
     initialize_splines(e1s, e2s);
 }
 
-TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2) : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Analytic& eos2)
+    : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
     n_samples = N_SAMPLE;
     const double e1_min = 0.55;//eos1.e_min * CONVERSION::geom_to_dens_GeV_fm3;
     const double e1_max = 2.4;
@@ -169,14 +173,15 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2) : eos1(eos1), eos2(eos
     //e1s = linspace(e1_min, e1_max, n_samples);
 }
 
-TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Poly& eos2, double F_chi) : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
+TOV_Family::TOV_Family(EOS_Tabular& eos1, EOS_Analytic& eos2, double F_chi)
+    : eos1(eos1), eos2(eos2), n_samples(N_SAMPLE) {
     n_samples = N_SAMPLE;
     const double e1_min = 0.15;
     const double e1_max = 2.4; //eos1.e_max * CONVERSION::geom_to_fm3 - 0.2;
     //std::cout << e1_max << std::endl;
     assert(e1_max > 0);
     e1s = linspace(e1_min, e1_max, n_samples);
-    generate_e2s_from_F_chi(eos2.K, F_chi);
+    generate_e2s_from_F_chi(F_chi);
     initialize_splines(e1s, e2s);
 }
 
@@ -189,14 +194,14 @@ TOV_Family::TOV_Family(EOS_Tabular& eos1) : eos1(eos1), eos2(null_eos), n_sample
     initialize_splines(e1s, e2s);
 }
 
-double TOV_Family::calc_F_chi(const double& K, const double& e1, const double& e2) {
-    eos2.K = K;
+double TOV_Family::calc_F_chi(const double& e1, const double& e2) {
+    //eos2.K = K;
     TwoFluid_TOV model(eos1, eos2);
     TOV_result res = model.integrate_two_fluid_tov(e1, e2);
     return res.F_chi;
 }
 
-std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const double& F_chi, const double& e1) {
+std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& F_chi, const double& e1) {
     const int double_bits = std::numeric_limits<double>::digits;
     const double err_max = 1;
     double lower_bound = 0.0;
@@ -216,21 +221,25 @@ std::pair<double, double> TOV_Family::calc_e2_from_F_chi(const double& K, const 
     }
     lower_bound = 1/3*upper_bound;
     */
-    auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*fabs(calc_F_chi(K, e1, e2)-F_chi);};
+    auto F_chi_minima = [&F_chi, &e1, this] (double e2) {return 100*fabs(calc_F_chi(e1, e2)-F_chi);};
     std::pair<double, double> brent_root = brent_find_minima(F_chi_minima, lower_bound, upper_bound, double_bits);
     
     //if (brent_root.second > err_max) {std::cout << brent_root.second << std::endl;}; 
     return brent_root;
 }
 
-double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, const double& e1) {
-    const double err_max = 0.01;
+double TOV_Family::calc_e2_from_F_chi_v2(const double& F_chi, const double& e1) {
+    if (F_chi == 0.0) {
+        return 0.0;
+    }
+    const double err_max = 0.0;
+    const double err_abs = 1e-6;
     double lower_bound = 0.0;
-    double upper_bound = 300.0;
+    double upper_bound = 10.0;
     int status;
     //double guess = lower_bound + (3 - sqrt(5)/2)*(upper_bound-lower_bound);
     double root;
-    auto F_chi_minima = [&F_chi, &K, &e1, this] (double e2) {return 100*(calc_F_chi(K, e1, e2)-F_chi);};
+    auto F_chi_minima = [&F_chi, &e1, this] (double e2) {return 100*(calc_F_chi(e1, e2)-F_chi);};
     gsl_function_pp<decltype(F_chi_minima)> Fp(F_chi_minima);
     const gsl_root_fsolver_type *T;
 
@@ -244,12 +253,12 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
     do { 
         status = gsl_root_fsolver_set(s, F, lower_bound, upper_bound);
         if (status == GSL_EINVAL) { // endpoints do not straddle means supplied bounds are invalid
-            upper_bound += 100;
+            upper_bound *= 2.0;
         }
         n_tries++;
     } while (status == GSL_EINVAL && n_tries <= max_tries);
     if (status == GSL_EINVAL) {
-        std::cout << "Could not find working upper bound"; 
+        std::cout << "Could not find working upper bound."; 
     }
     do {
         status = gsl_root_fsolver_iterate(s);
@@ -257,7 +266,7 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
         upper_bound = gsl_root_fsolver_x_upper(s);
         lower_bound = gsl_root_fsolver_x_lower(s);
         
-        status = gsl_min_test_interval(lower_bound, upper_bound, 0.0, 0.01);
+        status = gsl_min_test_interval(lower_bound, upper_bound, err_abs, err_max);
         
     } while (status == GSL_CONTINUE);
     if (status) {
@@ -274,9 +283,9 @@ double TOV_Family::calc_e2_from_F_chi_v2(const double& K, const double& F_chi, c
     return root;
 }
 
-void TOV_Family::add_to_vector(double K, double F_chi, int index_start, int index_end) {
+void TOV_Family::add_to_vector(double F_chi, int index_start, int index_end) {
     for (int index=index_start; index < index_end; index++) {
-        double root = calc_e2_from_F_chi_v2(K, F_chi, e1s[index]);
+        double root = calc_e2_from_F_chi_v2(F_chi, e1s[index]);
         e2s[index] = root;
         /*
         if (root.second > 1) {
@@ -286,35 +295,52 @@ void TOV_Family::add_to_vector(double K, double F_chi, int index_start, int inde
     }
 }
 
-void TOV_Family::generate_e2s_from_F_chi(double K, double F_chi) {
-    if (F_chi == 0.0 || K == 0.0) {
+void TOV_Family::generate_e2s_from_F_chi(double F_chi) {
+    if (F_chi == 0.0) {
         e2s = std::vector<double>(n_samples, 0.0);
     }
     else {
         e2s = std::vector<double>(N_SAMPLE);
         for (int i = 0; i < N_SAMPLE; i++) {
-            double e2 = calc_e2_from_F_chi_v2(K, F_chi, e1s[i]);
+            double e2 = calc_e2_from_F_chi_v2(F_chi, e1s[i]);
             e2s[i] = e2;
         }
     }
 }
 
+void TOV_Family::generate_e2s_from_F_chi_v2(double K, double F_chi) {
+    e2s = std::vector<double>(N_SAMPLE);
+    const double C = 11;
+    for (int i = 0; i < N_SAMPLE; i++) {
+        double e2 = C * F_chi * e1s[i]; //calc_e2_from_F_chi_v2(K, F_chi, e1s[i]);
+        e2s[i] = e2;
+    }
+}
+
 TOV_result TOV_Family::calc_lambda_and_mass_directly(double e1, double F_chi) {
     TwoFluid_TOV model(eos1, eos2);
-    double e2 = calc_e2_from_F_chi_v2(eos2.K, F_chi, e1);
+    double e2 = calc_e2_from_F_chi_v2(F_chi, e1);
     TOV_result result = model.integrate_two_fluid_tov(e1, e2);
     return result;
 }
 
-double TOV_Family::calc_lambda(const double K, const double F_chi, const double mass) {
+TOV_result TOV_Family::calc_lambda_and_mass_directly_v2(double e1, double F_chi) {
+    //eos2.K = K;
+    TwoFluid_TOV model(eos1, eos2);
+    double e2 = F_chi * e1; //calc_e2_from_F_chi_v2(eos2.K, F_chi, e1);
+    TOV_result result = model.integrate_two_fluid_tov(e1, e2);
+    return result;
+}
+
+double TOV_Family::calc_lambda(const double F_chi, const double mass) {
     //std::vector<double> e1s = linspace(0.15, 3.0, N_SAMPLE);
-    eos2.K = K;
-    generate_e2s_from_F_chi(K, F_chi);
+    //eos2.K = K;
+    generate_e2s_from_F_chi(F_chi);
     initialize_splines(e1s, e2s);
     return lambda_from_mass(mass);
 }
 
-double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, const double mass, const int n_threads) {
+double TOV_Family::calc_lambda_parallel(const double F_chi, const double mass, const int n_threads) {
     //const int n_threads = 20;
     //std::cout << "Starting lambda calculation" << std::endl;
     if (N_SAMPLE % n_threads != 0) {
@@ -322,7 +348,6 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
         exit(1);
     }
     const int part = int(N_SAMPLE / n_threads);
-    eos2.K = K;
     if (F_chi != 0) {
         e2s = std::vector<double>(N_SAMPLE);
         std::vector<std::thread> threads;
@@ -330,7 +355,7 @@ double TOV_Family::calc_lambda_parallel(const double K, const double F_chi, cons
         for (int j = 0; j < n_threads; j++) {
             int index_start = start;
             int index_end = start+part;
-            threads.push_back(std::thread(&TOV_Family::add_to_vector, this, K, F_chi, index_start, index_end));
+            threads.push_back(std::thread(&TOV_Family::add_to_vector, this, F_chi, index_start, index_end));
             start = index_end;
             /*
             if (j >= 100) {
@@ -368,7 +393,7 @@ double TOV_Family::calc_lambda_normalized(double K_norm, double F_chi_norm, doub
     double K = pow(10, normalize_inverse(K_norm, log10(K_MIN), log10(K_MAX)));
     double F_chi = normalize_inverse(F_chi_norm, F_CHI_MIN, F_CHI_MAX);
     double mass = normalize_inverse(mass_norm, M_MIN, M_MAX);
-    double lambda = calc_lambda_parallel(K, F_chi, mass, N_THREADS);
+    double lambda = calc_lambda_parallel(F_chi, mass, N_THREADS);
     double lambda_norm = normalize(lambda, LAMBDA_MIN, LAMBDA_MAX); 
 
     return lambda_norm;
@@ -441,6 +466,7 @@ double TOV_Family::k2_from_mass(double mass) {
 }
 
 double TOV_Family::lambda_from_mass(double mass) {
+    // TODO: try interpolating lambda directly
     const double radius = radius_from_mass(mass);
     const double k2 = k2_from_mass(mass);
     mass *= CONVERSION::Msun_to_mass_geom;
@@ -480,4 +506,8 @@ void TOV_Family::remove_equal_entries() {
         }  
     }
     n_samples = Ms.size();
+}
+
+void TOV_Family::set_analytic_eos(EOS_Analytic& eos2) {
+    this->eos2 = eos2;
 }

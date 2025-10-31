@@ -1,13 +1,16 @@
 #ifndef TWOFLUID_TOV_HPP
 #define TWOFLUID_TOV_HPP
-#include "eos.hpp"
+#include "eos_analytic.hpp"
 #include "eos_tabular.hpp"
 #include "eos_poly.hpp"
+#include "eos_analytic.hpp"
+#include <cassert>
+
 //#include "TOV_family.hpp"
-#include "../boost/numeric/odeint.hpp"
+//#include "../boost/numeric/odeint.hpp"
 #include <gsl/gsl_errno.h>
 
-using namespace boost::numeric::odeint;
+//using namespace boost::numeric::odeint;
 
 typedef std::vector<double> tov_state;
 //typedef boost::numeric::ublas::vector<double> tov_state;
@@ -29,14 +32,14 @@ class TwoFluid_TOV {
     public:
         // TwoFluid_TOV(EOS*, EOS*);
         // TwoFluid_TOV(EOS_Tabular*, EOS_Tabular*);
-        TwoFluid_TOV(EOS_Tabular&, EOS_Poly&);
+        TwoFluid_TOV(EOS_Tabular&, EOS_Analytic&);
         // TwoFluid_TOV(EOS_Poly*, EOS_Poly*);    
         TOV_result integrate_two_fluid_tov(double, double);
         void print_result(TOV_result&);
         void reset_state();
         // public EOSs are a temporary solution
         EOS_Tabular& eos1;
-        EOS_Poly& eos2;
+        EOS_Analytic& eos2;
         static int twofluid_tov_eqns_gsl(double const r, const double* const y, double* const dydr, void* const opaque) {
             assert(opaque);
             return(static_cast<TwoFluid_TOV *>(opaque)->twofluid_tov_eqns(r, y, dydr));
@@ -57,7 +60,7 @@ class TwoFluid_TOV {
         double lambda;
         double F_chi;
         double dr_min;
-        const int y_0r = 2;
+        const double y_0r = 2.0;
 };
 
 #endif

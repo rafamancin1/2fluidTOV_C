@@ -2,7 +2,8 @@ pyproject.toml
 setup.py
 src/TOV_family.cpp
 src/conversions.cpp
-src/eos.cpp
+src/eos_SIDM.cpp
+src/eos_analytic.cpp
 src/eos_poly.cpp
 src/eos_tabular.cpp
 src/main.cpp

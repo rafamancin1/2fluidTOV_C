@@ -13,6 +13,9 @@ namespace CONVERSION {
     extern const double m_to_km;
     extern const double km_to_m;
 
+    extern const double MeV_to_fm;
+    extern const double fm_to_MeV;
+
     // Pressure conversions
     extern const double MeV_fm3_to_pa;
     extern const double pa_to_MeV_fm3;
@@ -22,6 +25,12 @@ namespace CONVERSION {
     
     extern const double pres_MeV_fm3_to_geom;
     extern const double geom_to_pres_MeV_fm3;
+
+    extern const double pres_MeV_fm3_to_MeV4;
+    extern const double MeV4_to_pres_MeV_fm3;
+
+    extern const double pres_MeV4_to_geom;
+    extern const double geom_to_pres_MeV4;
 
     // Density conversions
     extern const double nucleon_m;
@@ -38,6 +47,12 @@ namespace CONVERSION {
 
     extern const double dens_GeV_fm3_to_geom;
     extern const double geom_to_dens_GeV_fm3;
+
+    extern const double dens_MeV_fm3_to_MeV4;
+    extern const double MeV4_to_dens_MeV_fm3;
+
+    extern const double dens_MeV4_to_geom;
+    extern const double geom_to_dens_MeV4;
 
     extern const double g_cm3_to_kg_m3;
     extern const double kg_m3_to_g_cm3;

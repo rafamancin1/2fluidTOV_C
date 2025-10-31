@@ -3,10 +3,11 @@
 
 #include <string>
 #include <cmath>
-#include "eos.hpp"
+#include <iostream>
+#include "eos_analytic.hpp"
 
 
-class EOS_Poly : public EOS {
+class EOS_Poly : public EOS_Analytic {
     public:
         EOS_Poly(std::string, const double, const double);
         // Copy constructor
@@ -19,27 +20,19 @@ class EOS_Poly : public EOS {
         double p_surface;
 
     public:
-        double pc_from_ec(const double&); // central pressure from central density
-        double energy_from_pressure(const double& pressure) {
-            if (pressure == 0) {
-                return 0;
-            }
-            else {
-                double first_term = std::pow(pressure/K, 1.0/Gamma);
-                double second_term = pressure / (Gamma - 1);
-                return first_term + second_term;
-            }
-        };
-        double dedp(const double& pressure) {
-            if (pressure == 0) {
-                return 0;
-            }
-            else {
-                double first_term = (1/(K*Gamma))*std::pow(pressure/K, 1.0/Gamma - 1);
-                double second_term = 1.0/(Gamma - 1);
-                return first_term + second_term;
-            }
-        };
+        double pc_from_ec(const double&) const override; // central pressure from central density
+        double energy_from_pressure(const double& pressure) const override {
+            if (pressure == 0) return 0;
+            double first_term = std::pow(pressure/K, 1.0/Gamma);
+            double second_term = pressure / (Gamma - 1);
+            return first_term + second_term;
+        }
+        double dedp(const double& pressure) const override {
+            if (pressure == 0) return 0;
+            double first_term = (1/(K*Gamma))*std::pow(pressure/K, 1.0/Gamma - 1);
+            double second_term = 1.0/(Gamma - 1);
+            return first_term + second_term;
+        }
 
     private:
         double pressure_minima(const double& pressure, const double& central_energy) {
