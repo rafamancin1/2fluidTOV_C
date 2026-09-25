@@ -1,5 +1,6 @@
 import twofluidTOV
 import argparse
+import os
 from math import log10
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,8 +17,10 @@ FCHI2_PTS = []
 MMAX2_PTS = []
 COLOR_PALETTE = plt.cm.rainbow(np.linspace(0, 1, 10))
 COLOR_INDEX = 0
+E2_MAX = 2.0  # GeV fm^-3, largest DM central energy density searched for a target F_chi
 
 def main():
+    global E2_MAX
     parser = argparse.ArgumentParser(description="Setup plot parameters")
     parser.add_argument('--eos1', dest='eos1', nargs='+', required=True)
     parser.add_argument('--eos2', dest='eos2', required=False)
@@ -27,7 +30,10 @@ def main():
     parser.add_argument('--lambda_chi', dest='lambda_chi', nargs='+', type=float, required=False, default=0.1)
     parser.add_argument('--Fchi', dest='Fchi', nargs='+', type=float, required=False)
     parser.add_argument('--mode', dest='mode', required=False)
+    parser.add_argument('--e2_max', dest='e2_max', type=float, required=False, default=E2_MAX,
+                        help='largest e_DM (GeV/fm^3) searched for a target F_chi; raise it (e.g. 1e3) to reproduce uncapped families')
     args = parser.parse_args()
+    E2_MAX = args.e2_max
     plt.rcParams.update({'font.size': 24})
     fig, ax = plt.subplots(1,1,figsize=(12,8))
     if len(args.eos1) == 1:
@@ -95,19 +101,17 @@ def main():
         ax.set_ylabel(r'$\epsilon_{DM}$ (GeV fm$^{{-3}}$)')
     elif args.mode == 'test':
         eos1 = twofluidTOV.EOS_Tabular(args.eos1[0])
-        eos2 = twofluidTOV.EOS_Poly(args.eos2, args.Achi[0], args.Gamma)
+        if args.eos2 == 'SIDM':
+            eos2 = twofluidTOV.EOS_SIDM(args.m_chi[0], args.lambda_chi[0])
+        else:
+            eos2 = twofluidTOV.EOS_Poly(args.eos2, args.Achi[0], args.Gamma)
         #e1 = np.linspace(0.15, 2.4, 200) #BEST for SLY EOS
         print("Creating family")
         fam = twofluidTOV.TOV_Family(eos1, eos2)
-        '''
-        for e01 in e1:
-            res = fam.calc_lambda_and_mass_directly(e01, args.Fchi[0], args.Achi[0])
-            print("Mass: {}, Lambda: {}".format(res.M, res.lambda_param))
-        '''
-        #res = fam.calc_lambda_and_mass_directly(1.77, 0.34, 1e8)
+        fam.e2_max = E2_MAX
         print(f"Testing ec1 prior with F_chi={args.Fchi[0]}")
         e1 = np.linspace(0.47, 1.0, 1000)
-        res = [fam.calc_lambda_and_mass_directly(args.Fchi[0]) for e in e1]
+        res = [fam.calc_lambda_and_mass_directly(e, args.Fchi[0]) for e in e1]
         #print("Mass: {}, Lambda: {}".format(res.M * mass_geom_to_Msun, res.lambda_param))
         exit()
             
@@ -184,7 +188,7 @@ def create_plot(eos1, plot_label, ax, eos2=None, F_chi=None, mode='MR', A_chi=No
     global COLOR_INDEX
     global COLOR_PALETTE
     if eos2 != None:
-        fam = twofluidTOV.TOV_Family(eos1, eos2, F_chi)
+        fam = twofluidTOV.TOV_Family(eos1, eos2, F_chi, E2_MAX)
     else:
         fam = twofluidTOV.TOV_Family(eos1)
     if mode == 'MR':
@@ -225,38 +229,41 @@ def create_plot(eos1, plot_label, ax, eos2=None, F_chi=None, mode='MR', A_chi=No
             Mmaxs_threshold = Mmaxs[didx]
             Fchis_threshold = Fchis[didx]
 
-            # TEMPORARY CODE FOR APR4 EPP #
-            df2 = pd.read_csv(data_fname2)
-            Fchis2 = df2['F_chi'].values
-            Mmaxs2 = df2['Mmax'].values
-            dMdF2 = np.gradient(Mmaxs2, Fchis2)
-            didx2 = np.argmin(np.abs(dMdF2))
-            Mmaxs_threshold2 = Mmaxs2[didx2]
-            Fchis_threshold2 = Fchis2[didx2]
-            FCHI2_PTS.append(Fchis_threshold2)
-            MMAX2_PTS.append(Mmaxs_threshold2)
-            ###############################
-
             FCHI_PTS.append(Fchis_threshold)
             MMAX_PTS.append(Mmaxs_threshold)
 
             print(f"With m_chi= {m_chi} MeV, Threshold Mmax: {Mmaxs_threshold} at F_chi: {Fchis_threshold}")
             ax.plot(Fchis, Mmaxs, color=COLOR_PALETTE[COLOR_INDEX], label=plot_label)
-            ax.plot(Fchis2, Mmaxs2, color=COLOR_PALETTE[COLOR_INDEX], linestyle='--')
+
+            # TEMPORARY CODE FOR APR4 EPP #
+            # Comparison curve, drawn only when its cached CSV exists
+            if os.path.exists(data_fname2):
+                df2 = pd.read_csv(data_fname2)
+                Fchis2 = df2['F_chi'].values
+                Mmaxs2 = df2['Mmax'].values
+                dMdF2 = np.gradient(Mmaxs2, Fchis2)
+                didx2 = np.argmin(np.abs(dMdF2))
+                Mmaxs_threshold2 = Mmaxs2[didx2]
+                Fchis_threshold2 = Fchis2[didx2]
+                FCHI2_PTS.append(Fchis_threshold2)
+                MMAX2_PTS.append(Mmaxs_threshold2)
+                ax.plot(Fchis2, Mmaxs2, color=COLOR_PALETTE[COLOR_INDEX], linestyle='--')
+            ###############################
             #ax.scatter(Fchis_threshold, Mmaxs_threshold, color='red', s=100, label='Transition point')
         except FileNotFoundError:
             print(f"File {data_fname} not found.")
             for i, f in tqdm(enumerate(Fchis), desc="Generating Mmax points"):
-                fam = twofluidTOV.TOV_Family(eos1, eos2, f)
-                Mmaxs[i] = max(fam.Ms) * mass_geom_to_Msun
+                fam = twofluidTOV.TOV_Family(eos1, eos2, f, E2_MAX)
+                Mmaxs[i] = np.nanmax(fam.Ms) * mass_geom_to_Msun
             ax.plot(Fchis, Mmaxs, label=plot_label)
         df = pd.DataFrame({'F_chi': Fchis, 'Mmax': Mmaxs})
         df.to_csv(data_fname, index=False)
     elif mode == 'lambdaFchi':
         e1_0 = E1_0
         fam = twofluidTOV.TOV_Family(eos1, eos2)
+        fam.e2_max = E2_MAX
         Fchis = np.linspace(0.0, 0.95, 200)
-        Ls = np.array([fam.calc_lambda_and_mass_directly(e1_0, f, A_chi).lambda_param for f in Fchis])
+        Ls = np.array([fam.calc_lambda_and_mass_directly(e1_0, f).lambda_param for f in Fchis])
         ax.plot(Fchis, Ls, label=plot_label)
     elif mode == 'e1M':
         e1s = np.array(fam.e1s)
@@ -277,11 +284,13 @@ def create_plot(eos1, plot_label, ax, eos2=None, F_chi=None, mode='MR', A_chi=No
     elif mode == 'RFchi':
         e1_0 = E1_0
         fam = twofluidTOV.TOV_Family(eos1, eos2)
+        fam.e2_max = E2_MAX
         Fchis = np.linspace(0.0, 0.95, 200)
-        RBs = np.array([fam.calc_lambda_and_mass_directly(e1_0, f, A_chi).R_B / 1e3 for f in Fchis])
-        RDs = np.array([fam.calc_lambda_and_mass_directly(e1_0, f, A_chi).R_D / 1e3 for f in Fchis])
+        results = [fam.calc_lambda_and_mass_directly(e1_0, f) for f in Fchis]
+        RBs = np.array([res.R_B / 1e3 for res in results])
+        RDs = np.array([res.R_D / 1e3 for res in results])
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        color_rb = np.random.choice(colors)
+        color_rb = colors[np.random.randint(len(colors))]
         ax.plot(Fchis, RBs, label=plot_label, color=color_rb)
         ax.plot(Fchis, RDs, color=color_rb, linestyle='--')
     elif mode == 'RM':
@@ -289,7 +298,7 @@ def create_plot(eos1, plot_label, ax, eos2=None, F_chi=None, mode='MR', A_chi=No
         RBs = np.array(fam.RBs) / 1e3
         RDs = np.array(fam.RDs) / 1e3
         colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        color_rb = np.random.choice(colors)
+        color_rb = colors[np.random.randint(len(colors))]
         ax.plot(Ms, RBs, label=plot_label, color=color_rb)
         ax.plot(Ms, RDs, color=color_rb, linestyle='--')
     elif mode == 'e1e2':

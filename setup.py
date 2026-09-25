@@ -1,8 +1,12 @@
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 from glob import glob
+import os
 
 __version__ = "0.0.1"
+
+# Default EOS table directory baked into the module (overridable at runtime with $TWOFLUID_EOS_DIR)
+EOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eos_tables")
 
 # The main interface is through Pybind11Extension.
 # * You can add cxx_std=11/14/17, and then build_ext can be removed.
@@ -18,7 +22,8 @@ ext_modules = [
         "twofluidTOV",
         sorted(glob("src/*.cpp")),
         # Example: passing in the version to the compiled code
-        define_macros=[("VERSION_INFO", __version__)],
+        define_macros=[("VERSION_INFO", __version__),
+                       ("TWOFLUID_DEFAULT_EOS_DIR", '"{}"'.format(EOS_DIR))],
         extra_link_args=['-lgsl', '-lgslcblas', '-lm']
     ),
 ]

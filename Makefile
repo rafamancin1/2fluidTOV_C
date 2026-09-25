@@ -1,5 +1,7 @@
 CC=g++
-CFLAGS=-c -g -Wall -Ofast -pthread -I ./ 
+CFLAGS=-c -g -Wall -O3 -pthread
+# Default EOS table directory baked into the binary (overridable at runtime with $TWOFLUID_EOS_DIR)
+CPPFLAGS=-DTWOFLUID_DEFAULT_EOS_DIR=\"$(CURDIR)/eos_tables\"
 SRC_DIR=src
 OBJ_DIR=build
 HEAD_DIR=include
@@ -13,11 +15,12 @@ OBJECTS=$(SOURCES:$(SRC_DIR)%.cpp=$(OBJ_DIR)%.o)
 
 all: $(EXEC)
 
-$(EXEC): $(OBJECTS) 
+$(EXEC): $(OBJECTS)
 	$(CC) $^ -o $@ -lgsl -lgslcblas -lm
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CC) $(CFLAGS) $< -o $@ -lm
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@
 
-clean: 
-	rm $(OBJECTS) $(EXEC)
+clean:
+	rm -f $(OBJECTS) $(EXEC)

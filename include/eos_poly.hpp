@@ -7,17 +7,13 @@
 #include "eos_analytic.hpp"
 
 
+// Parameters live in EOS_Analytic: K, Gamma and p_surface.
 class EOS_Poly : public EOS_Analytic {
     public:
         EOS_Poly(std::string, const double, const double);
         // Copy constructor
         EOS_Poly(const EOS_Poly&);
         EOS_Poly();
-
-    public:
-        double K;
-        double Gamma;
-        double p_surface;
 
     public:
         double pc_from_ec(const double&) const override; // central pressure from central density

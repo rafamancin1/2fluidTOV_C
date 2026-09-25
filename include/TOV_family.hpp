@@ -1,74 +1,54 @@
 #ifndef TOV_FAMILY_HPP
 #define TOV_FAMILY_HPP
 
+#include <functional>
 #include "eos_analytic.hpp"
 #include "eos_tabular.hpp"
 #include "eos_poly.hpp"
 #include "eos_SIDM.hpp"
 #include "twofluid_TOV.hpp"
-//#include <boost/function.hpp>
 #include "../libInterpolate/Interpolate.hpp"
 
 template<typename T>
 std::vector<double> linspace(T, T, int);
-const double K_MIN = 1e7;
-const double K_MAX = 1e8;
-const double F_CHI_MIN = 0.0;
-const double F_CHI_MAX = 0.99;
-const double M_MIN = 0.7;
-const double M_MAX = 2.0;
-const double LAMBDA_MIN = 0.0;
-const double LAMBDA_MAX = 5000.0;
+const double E1_MIN = 0.15; // lower bound of the baryonic central energy density grid (GeV/fm^3)
+const double E1_MAX = 2.4;  // upper bound of the baryonic central energy density grid (GeV/fm^3)
 const int N_SAMPLE = 400;
+const double E2_MAX_DEFAULT = 2.0; // upper bound on the DM central energy density searched for a target F_chi (GeV/fm^3)
 
 class TOV_Family {
     public:
-        TOV_Family(EOS_Tabular&, EOS_Analytic&, int n_samples);
-        TOV_Family(EOS_Tabular&, EOS_Analytic&, std::string filename);
         TOV_Family(EOS_Tabular&, EOS_Analytic&, std::vector<double>&, std::vector<double>&);
-        TOV_Family(EOS_Tabular&, EOS_Analytic&, double);
+        TOV_Family(EOS_Tabular&, EOS_Analytic&, double F_chi, double e2_max = E2_MAX_DEFAULT);
         TOV_Family(EOS_Tabular&, EOS_Analytic&);
         TOV_Family(EOS_Tabular&);
-        TOV_Family();
-        //TOV_Family(std::string); // For python wrapping
         double radius_from_mass(double);
         double k2_from_mass(double);
         double lambda_from_mass(double);
         TOV_result calc_lambda_and_mass_directly(double, double);
         TOV_result calc_lambda_and_mass_directly_v2(double, double);
         double calc_lambda(const double, const double);
-        double calc_lambda_normalized(double, double, double);
-        double calc_lambda_parallel(const double, const double, const int);
         double calc_e2_from_F_chi_v2(const double&, const double&);
         void set_analytic_eos(EOS_Analytic& eos2);
-        void write_to_file();
-        void generate_lambda_f_points();
         std::vector<double> Rs, Ms, k2s, lambdas, RBs, RDs;
         EOS_Tabular& eos1;
-        EOS_Analytic& eos2;
+        std::reference_wrapper<EOS_Analytic> eos2; // rebindable by set_analytic_eos
         std::vector<double> e1s;
         std::vector<double> e2s;
+        double e2_max = E2_MAX_DEFAULT; // targets needing a larger e2 are unreachable (NaN)
     private:
-        //boost::function<double (double)> r_m;
-        //boost::function<double (double)> k2_m;
+        // Splines over the stable branch (masses up to the maximum mass) only
         _1D::CubicSplineInterpolator<double> r_m;
         _1D::CubicSplineInterpolator<double> k2_m;
+        double M_spline_min = 0.0;
+        double M_spline_max = 0.0;
+        bool splines_ready = false;
 
-        std::vector<int> bad_indexes;
         void generate_e2s_from_F_chi(double);
-        void generate_e2s_from_F_chi_v2(double, double); // e2 = F_chi * e1
-        void sort_mass();
-        void remove_equal_entries();
         void initialize_splines(const std::vector<double>&, const std::vector<double>&);
-        std::pair<double, double> calc_e2_from_F_chi(const double&, const double&);        
         double calc_F_chi(const double&, const double&);
         void reset_state();
-        void add_to_vector(double, int, int);
-
-        static double normalize(const double X, const double X_min, const double X_max) {return (X-X_min)/(X_max-X_min);};
-        static double normalize_inverse(const double X, const double X_min, const double X_max) {return (X_max-X_min)*X + X_min;};
-
-        int n_samples;
+        void check_splines() const;
 };
 
 #endif

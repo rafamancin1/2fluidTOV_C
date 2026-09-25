@@ -1,6 +1,9 @@
 #include "../include/eos_tabular.hpp"
 #include <iostream>
 #include <cmath>
+#include <cstdlib>
+#include <limits>
+#include <stdexcept>
 //#include "../boost/math/interpolators/pchip.hpp"
 //#include <gsl/gsl_errno.h>
 //#include <gsl/gsl_spline.h>
@@ -9,21 +12,31 @@
 
 //using boost::math::interpolators::pchip; //Piecewise Cubic Hermite interpolation
 
-//Copy constructor 
+// Directory holding the LALSimNeutronStarEOS_*.dat tables: $TWOFLUID_EOS_DIR if set,
+// else the path baked in at build time (Makefile / setup.py), else ./eos_tables
+static std::filesystem::path eos_table_dir() {
+    const char* env_dir = std::getenv("TWOFLUID_EOS_DIR");
+    if (env_dir != nullptr && env_dir[0] != '\0') {
+        return env_dir;
+    }
+#ifdef TWOFLUID_DEFAULT_EOS_DIR
+    return TWOFLUID_DEFAULT_EOS_DIR;
+#else
+    return "eos_tables";
+#endif
+}
+
+//Copy constructor
 EOS_Tabular::EOS_Tabular(const EOS_Tabular& other) : EOS_Tabular{other.eos_name} {};
-// Project must always be directly under home
+
 EOS_Tabular::EOS_Tabular(std::string eos_name) : eos_name(eos_name), p_surface(0.0), e_min(0.0), e_max(0.0), p_max(0.0), tab_size(0) {
-    std::string filename = eos_path / (eos_prefix + eos_name + eos_suffix);
-    std::cout << filename << std::endl;
-    std::filesystem::path home = getenv("HOME");
-    std::filesystem::path project_path = home / "2fluidTOV_C";
-    std::filesystem::path full_filename = project_path / filename;
+    const std::filesystem::path full_filename = eos_table_dir() / (eos_prefix + eos_name + eos_suffix);
+    std::cout << full_filename.string() << std::endl;
     std::ifstream f_eos;
-    //std::cout << "Opening file " << filename << std::endl;
     f_eos.open(full_filename);
     if (!f_eos.is_open()) {
-        std::cout << "Cannot open file " << full_filename << std::endl;
-        exit(0);
+        throw std::runtime_error("Cannot open EOS table " + full_filename.string() +
+                                 " (set TWOFLUID_EOS_DIR to the eos_tables directory)");
     };
     f_eos.seekg(0);
     std::vector<double> log_e_tab;
@@ -35,14 +48,17 @@ EOS_Tabular::EOS_Tabular(std::string eos_name) : eos_name(eos_name), p_surface(0
         f_eos >> p;
         f_eos >> e;
         if (f_eos.eof()) { break; }
+        // Tables start with a "0 0" row, whose log is -inf; it would poison the first spline intervals
+        if (p <= 0 || e <= 0) { continue; }
         log_e_tab.push_back(log10(e));
         log_p_tab.push_back(log10(p));
         //log_e_tab_copy.push_back(log10(e));
         //log_p_tab_copy.push_back(log10(p));
     }
-    //remove_leading_zero(log_e_tab);
-    //remove_leading_zero(log_p_tab);
     tab_size = log_e_tab.size();
+    if (tab_size < 3) {
+        throw std::runtime_error("EOS table " + full_filename.string() + " has fewer than 3 usable rows");
+    }
     //p_surface = pow(10, log_p_tab[0]);
     e_min = pow(10, log_e_tab[0]);
     e_max = pow(10, log_e_tab.back());
@@ -99,18 +115,22 @@ void EOS_Tabular::initialize_splines(double* log_e_tab_ptr, double* log_p_tab_pt
     //free(log_p_tab_c);
 }
 
-double EOS_Tabular::e_p(double pressure) {
-    return gsl_spline_eval(e_of_p, pressure, acc_e);
+// True when x lies inside the spline's tabulated range (false for NaN). Checking before
+// evaluating keeps GSL from raising an error, whose default handler aborts the process.
+static bool in_table(const gsl_spline* spline, double x) {
+    return x >= spline->x[0] && x <= spline->x[spline->size - 1];
 }
 
-double EOS_Tabular::p_e(double energy) {
-    return gsl_spline_eval(p_of_e, energy, acc_p);
+// log10 energy from log10 pressure; NaN outside the table
+double EOS_Tabular::e_p(double log_pressure) {
+    if (!in_table(e_of_p, log_pressure)) { return std::numeric_limits<double>::quiet_NaN(); }
+    return gsl_spline_eval(e_of_p, log_pressure, acc_e);
 }
 
-void EOS_Tabular::remove_leading_zero(std::vector<double>& x_tab) {
-    if (x_tab[0] == 0) {
-        x_tab.erase(x_tab.begin());
-    }
+// log10 pressure from log10 energy; NaN outside the table
+double EOS_Tabular::p_e(double log_energy) {
+    if (!in_table(p_of_e, log_energy)) { return std::numeric_limits<double>::quiet_NaN(); }
+    return gsl_spline_eval(p_of_e, log_energy, acc_p);
 }
 
 double EOS_Tabular::energy_from_pressure(const double& pressure) {
@@ -130,22 +150,15 @@ double EOS_Tabular::pc_from_ec(const double& central_energy) {
     return p_tab;
 };
 
+// Analytic derivative of the log-log spline: e = 10^f(log10 p)  =>  de/dp = (e/p) f'(log10 p).
+// Zero below the surface pressure, where energy_from_pressure is zero too; NaN above the table.
 double EOS_Tabular::dedp(const double& pressure) {
-    
-    if (pressure == 0) {
+    if (pressure <= 0 || pressure < p_surface) {
         return 0;
     }
-    else {
-        double dp = pressure * rel_dp;
-        double p_upper = pressure + dp;
-        double p_lower = pressure - dp;
-
-        double eps_upper = energy_from_pressure(p_upper);
-        double eps_lower = energy_from_pressure(p_lower);
-
-        double dedp_value = (eps_upper - eps_lower) / (2 * dp);
-        return dedp_value;
-    }
-    
-   //return e_p.derivative(log10(pressure));
+    const double log_pressure = log10(pressure);
+    if (!in_table(e_of_p, log_pressure)) { return std::numeric_limits<double>::quiet_NaN(); }
+    const double energy = pow(10.0, e_p(log_pressure));
+    const double dloge_dlogp = gsl_spline_eval_deriv(e_of_p, log_pressure, acc_e);
+    return energy / pressure * dloge_dlogp;
 };

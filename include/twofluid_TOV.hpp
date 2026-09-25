@@ -3,17 +3,13 @@
 #include "eos_analytic.hpp"
 #include "eos_tabular.hpp"
 #include "eos_poly.hpp"
-#include "eos_analytic.hpp"
 #include <cassert>
+#include <vector>
 
-//#include "TOV_family.hpp"
-//#include "../boost/numeric/odeint.hpp"
 #include <gsl/gsl_errno.h>
-
-//using namespace boost::numeric::odeint;
+#include <gsl/gsl_odeiv2.h>
 
 typedef std::vector<double> tov_state;
-//typedef boost::numeric::ublas::vector<double> tov_state;
 typedef struct TOV_result {
             const double M_B;
             const double M_D;
@@ -30,11 +26,10 @@ typedef struct TOV_result {
 
 class TwoFluid_TOV {
     public:
-        // TwoFluid_TOV(EOS*, EOS*);
-        // TwoFluid_TOV(EOS_Tabular*, EOS_Tabular*);
         TwoFluid_TOV(EOS_Tabular&, EOS_Analytic&);
-        // TwoFluid_TOV(EOS_Poly*, EOS_Poly*);    
+        // Returns nan_result() when the configuration cannot be solved
         TOV_result integrate_two_fluid_tov(double, double);
+        static TOV_result nan_result(); // every field NaN: signals a failed solve
         void print_result(TOV_result&);
         void reset_state();
         // public EOSs are a temporary solution
@@ -46,7 +41,7 @@ class TwoFluid_TOV {
         }
     private:
         int twofluid_tov_eqns(double const, const double* const, double* const);
-        //void tov_step(controlled_runge_kutta<runge_kutta_dopri5<tov_state>>&, tov_state&, double&, double&);
+        double locate_surface(int, double, const tov_state&, double, gsl_odeiv2_step*, const gsl_odeiv2_system*);
         void calc_k2();
         void calc_lambda();
         double M_B;
@@ -60,6 +55,11 @@ class TwoFluid_TOV {
         double lambda;
         double F_chi;
         double dr_min;
+        // Surface pressures and which fluids are still integrated, set per integration
+        double ps1;
+        double ps2;
+        bool active1;
+        bool active2;
         const double y_0r = 2.0;
 };
 

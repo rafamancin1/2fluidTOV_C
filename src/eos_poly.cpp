@@ -7,7 +7,10 @@
 using boost::math::tools::brent_find_minima;
 
 EOS_Poly::EOS_Poly(std::string eos_name, const double K, const double Gamma)
-    : EOS_Analytic("Polytropic"), K(K), Gamma(Gamma), p_surface(1e-20) {}
+    : EOS_Analytic("Polytropic") {
+    this->K = K;
+    this->Gamma = Gamma;
+}
 
 EOS_Poly::EOS_Poly(const EOS_Poly& other)
     : EOS_Poly{other.eos_name, other.K, other.Gamma} {}
@@ -16,6 +19,7 @@ EOS_Poly::EOS_Poly()
     : EOS_Poly("null", 0.0, 0.0) {}
 
 double EOS_Poly::pc_from_ec(const double& central_energy) const {
+    if (central_energy <= 0) return 0.0; // no fluid; leave p_surface untouched
     double p_c_approx = K*pow(central_energy,Gamma);
     const int double_bits = std::numeric_limits<double>::digits;
     double upperCoef = 15.0;

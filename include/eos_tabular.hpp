@@ -33,12 +33,9 @@ class EOS_Tabular {
         int tab_size;
 
     private:
-        void remove_leading_zero(std::vector<double>&);
-        const std::filesystem::path eos_path = "eos_tables/";
         const std::string eos_suffix = ".dat";
         const std::string eos_prefix = "LALSimNeutronStarEOS_";
         double p, e; //tabulated pressure and energy
-        const double rel_dp = 1e-5;
         // std::vector<double> log_e_tab, log_p_tab;
         // boost::math::interpolators::pchip<std::vector<double>>* e_p;
         // boost::math::interpolators::pchip<std::vector<double>>* p_e;
