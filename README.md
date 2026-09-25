@@ -196,6 +196,10 @@ Both scripts use the installed Python module and write their figures to the curr
 | `src/plot_*.py`, `TOV_wrapper.py`, `python/` | plotting scripts and small usage examples |
 | `Eigen/`, `libInterpolate/` | bundled third-party headers |
 
+## License
+
+The code in this repository is released under the [MIT License](LICENSE). Bundled third-party components keep their own licences: Eigen (Mozilla Public License 2.0), libInterpolate, and the EOS tables in `eos_tables/` (see `eos_tables/README` for their sources).
+
 ## Citation
 
 If you use this code, please cite:

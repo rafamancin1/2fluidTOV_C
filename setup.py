@@ -33,6 +33,7 @@ setup(
     version=__version__,
     author="Rafael Mancini Santos",
     author_email="rmancinisan@gmail.com",
+    license="MIT",
     description="A TOV solver using pybind11",
     long_description="",
     ext_modules=ext_modules,
